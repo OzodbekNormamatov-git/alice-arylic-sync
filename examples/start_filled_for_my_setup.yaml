@@ -1,0 +1,115 @@
+# Sizning entity'laringiz bilan to'ldirilgan TAYYOR avtomatika (blueprintsiz).
+# Settings -> Automations -> ... -> Edit in YAML ichiga shu kodni qo'ying,
+# yoki configuration / automations.yaml ga qo'shing.
+# Blueprint asosiy manba — bu shunchaki qulay nusxa.
+
+alias: "Alice -> Arylic | Smooth Handoff (filled)"
+description: >-
+  Alice'da trek boshlansa, Arylic'da xuddi shu sekunddan navbatma-navbat
+  crossfade (Arylic oldinda).
+mode: restart
+max_exceeded: silent
+
+variables:
+  alice_player: media_player.yandex_station_l01szd700a8eac
+  arylic_player: media_player.soundsystem_e5da_2
+  arylic_floor: 0.05
+  arylic_target: 0.35
+  alice_end_volume: 0
+  sync_offset: 5.0
+  steps: 12
+  arylic_headstart_ms: 350
+  alice_gap_ms: 180
+  track_uri_prefix: "yandex_music://track/"
+  media_type: track
+  play_wait_timeout: 12
+  buffer_wait_timeout: 6
+
+triggers:
+  - trigger: state
+    entity_id: media_player.yandex_station_l01szd700a8eac
+    attribute: media_content_id
+    id: new_track
+  - trigger: state
+    entity_id: media_player.yandex_station_l01szd700a8eac
+    to: playing
+    id: start_playing
+
+conditions:
+  - condition: template
+    value_template: "{{ is_state(alice_player, 'playing') }}"
+  - condition: template
+    value_template: "{{ state_attr(alice_player, 'media_content_type') == 'music' }}"
+  - condition: template
+    value_template: >
+      {{ state_attr(alice_player, 'media_content_id')
+         not in [none, '', 'unknown', 'unavailable'] }}
+
+actions:
+  - variables:
+      track_id: "{{ state_attr(alice_player, 'media_content_id') }}"
+      ma_track_uri: "{{ track_uri_prefix ~ track_id }}"
+      alice_start_volume: "{{ state_attr(alice_player, 'volume_level') | float(0.5) }}"
+
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ arylic_player }}"
+    data:
+      volume_level: "{{ arylic_floor | float(0.05) }}"
+  - action: music_assistant.play_media
+    target:
+      entity_id: "{{ arylic_player }}"
+    data:
+      media_id: "{{ ma_track_uri }}"
+      media_type: "{{ media_type }}"
+
+  - wait_template: "{{ is_state(arylic_player, 'playing') }}"
+    timeout: "{{ play_wait_timeout | int }}"
+    continue_on_timeout: true
+
+  - variables:
+      seek_target: >
+        {% set pos = state_attr(alice_player, 'media_position') | float(0) %}
+        {% set upd = state_attr(alice_player, 'media_position_updated_at') %}
+        {% if upd %}
+          {{ (pos + (as_timestamp(now()) - as_timestamp(upd)) + (sync_offset | float(0))) | int }}
+        {% else %}
+          {{ (pos + (sync_offset | float(0))) | int }}
+        {% endif %}
+  - action: media_player.media_seek
+    target:
+      entity_id: "{{ arylic_player }}"
+    data:
+      seek_position: "{{ seek_target | int }}"
+    continue_on_error: true
+
+  - wait_template: >
+      {{ is_state(arylic_player, 'playing')
+         and (state_attr(arylic_player, 'media_position') | float(0)) >= (seek_target | float(0) - 1) }}
+    timeout: "{{ buffer_wait_timeout | int }}"
+    continue_on_timeout: true
+  - delay: { milliseconds: 400 }
+
+  - repeat:
+      count: "{{ steps | int }}"
+      sequence:
+        - action: media_player.volume_set
+          target:
+            entity_id: "{{ arylic_player }}"
+          data:
+            volume_level: >
+              {% set start = arylic_floor | float(0.05) %}
+              {% set finish = arylic_target | float(0.35) %}
+              {% set n = steps | int %}
+              {{ [finish, start + ((finish - start) / n * repeat.index)] | min | round(3) }}
+        - delay: "{{ (arylic_headstart_ms | int) / 1000 }}"
+        - action: media_player.volume_set
+          target:
+            entity_id: "{{ alice_player }}"
+          data:
+            volume_level: >
+              {% set start = alice_start_volume | float(0.5) %}
+              {% set finish = alice_end_volume | float(0) %}
+              {% set n = steps | int %}
+              {{ [finish, start - ((start - finish) / n * repeat.index)] | max | round(3) }}
+        - delay: "{{ (alice_gap_ms | int) / 1000 }}"

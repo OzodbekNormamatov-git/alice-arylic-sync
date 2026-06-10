@@ -1,0 +1,252 @@
+blueprint:
+  name: "Alice → Arylic | Smooth Handoff (Start)"
+  description: >
+    Alice (Yandex Station) da musiqa boshlanganda yoki trek almashganda,
+    o'sha trekni Music Assistant orqali Arylic (Hi-Fi speaker) da xuddi shu
+    sekunddan boshlab qo'yadi va ikkalasini navbatma-navbat (Arylic OLDINDA)
+    yumshoq crossfade qiladi: har qadamda avval Arylic bir pog'ona ko'tariladi,
+    keyin Alice bir pog'ona pasayadi. Oxirida Alice 0 (jim), Arylic to'liq ovoz.
+
+    Talab: Music Assistant integratsiyasi va Arylic Music Assistant'ga ulangan
+    bo'lishi kerak (chiqish entity'si Music Assistant'niki bo'lsin).
+  domain: automation
+  source_url: https://github.com/YOUR_GH_USER/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_handoff_start.yaml
+  input:
+    players:
+      name: "🔊 Speakerlar / Players"
+      icon: mdi:speaker-multiple
+      description: >
+        Manba (Alice) va chiqish (Arylic) speakerlarini tanlang.
+      input:
+        alice_player:
+          name: "Alice (Yandex Station) — MANBA"
+          description: >
+            Musiqa shu yerda boshlanadi va Alice ovoz bilan boshqaradigan speaker.
+            Yandex Station ning media_player entity'sini tanlang.
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+        arylic_player:
+          name: "Arylic (Music Assistant) — CHIQISH"
+          description: >
+            Hi-Fi chiqish speaker. MUHIM: bu Arylic ning Music Assistant'dagi
+            media_player entity'si bo'lishi kerak (xom LinkPlay/Arylic emas),
+            chunki music_assistant.play_media aynan shu entity bilan ishlaydi.
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+    volumes:
+      name: "🎚 Ovoz darajalari / Volumes"
+      icon: mdi:tune-vertical
+      description: >
+        Crossfade qaysi ovozlardan boshlanib, qayerga borishini belgilaydi.
+      input:
+        arylic_floor:
+          name: "Arylic boshlang'ich ovozi (floor)"
+          description: "Arylic qaysi ovozdan boshlab ko'tariladi. 0.05 = 5%."
+          default: 0.05
+          selector:
+            number: { min: 0, max: 1, step: 0.01, mode: slider }
+        arylic_target:
+          name: "Arylic yakuniy ovozi (target)"
+          description: "Crossfade oxirida Arylic shu darajaga chiqadi. 0.35 = 35%."
+          default: 0.35
+          selector:
+            number: { min: 0, max: 1, step: 0.01, mode: slider }
+        alice_end_volume:
+          name: "Alice yakuniy ovozi"
+          description: "Crossfade oxirida Alice shu darajaga tushadi. 0 = to'liq jim."
+          default: 0
+          selector:
+            number: { min: 0, max: 1, step: 0.01, mode: slider }
+    timing:
+      name: "⏱ Sinxron va tezlik / Timing"
+      icon: mdi:timer-cog
+      description: >
+        Eng muhim sozlamalar — Arylic Alice bilan bir sekunddan, hech qancha
+        kechikmasdan chiqishi uchun shu yerdan tuzatasiz.
+      input:
+        sync_offset:
+          name: "Sinxron offset (soniya)"
+          description: >
+            Arylic Alice bilan bir xil sekunddan chiqishi uchun tuzatish.
+            Arylic ORQADA eshitilsa kattalashtiring, OLDINDA bo'lsa kichraytiring.
+          default: 5.0
+          selector:
+            number: { min: -10, max: 30, step: 0.1, unit_of_measurement: s, mode: box }
+        steps:
+          name: "Crossfade qadamlari soni"
+          description: "Ko'p = silliqroq (sekinroq), kam = tezroq (pog'onalar sezilarli)."
+          default: 12
+          selector:
+            number: { min: 2, max: 50, step: 1, mode: box }
+        arylic_headstart_ms:
+          name: "Arylic head-start (ms)"
+          description: >
+            Har qadamda Arylic ko'tarilgach, Alice tushishidan oldingi pauza.
+            Arylic ning tarmoq/bufer kechikishini aynan shu yopadi — Arylic
+            orqada qolaversa oshiring (450-600).
+          default: 350
+          selector:
+            number: { min: 0, max: 2000, step: 10, unit_of_measurement: ms, mode: box }
+        alice_gap_ms:
+          name: "Alice gap (ms)"
+          description: "Alice tushgandan keyin keyingi qadamgacha kutish."
+          default: 180
+          selector:
+            number: { min: 0, max: 2000, step: 10, unit_of_measurement: ms, mode: box }
+    advanced:
+      name: "🛠 Qo'shimcha / Advanced"
+      icon: mdi:cog
+      collapsed: true
+      description: >
+        Odatda tegmasangiz ham bo'ladi. Boshqa musiqa provayderi yoki boshqa
+        integratsiya ishlatsangiz shu yerdan moslaysiz.
+      input:
+        track_uri_prefix:
+          name: "Track URI prefiksi"
+          description: >
+            Alice'ning media_content_id qiymati oldiga qo'shiladigan URI.
+            Yandex Music uchun 'yandex_music://track/'. Boshqa provayder uchun
+            o'zgartiring (masalan Spotify URI).
+          default: "yandex_music://track/"
+          selector:
+            text: {}
+        media_type:
+          name: "media_type"
+          description: "music_assistant.play_media uchun media turi (odatda track)."
+          default: "track"
+          selector:
+            text: {}
+        play_wait_timeout:
+          name: "Arylic 'playing' kutish timeouti (s)"
+          description: "Arylic ijroga o'tguncha shuncha kutamiz, keyin davom etamiz."
+          default: 12
+          selector:
+            number: { min: 1, max: 60, step: 1, unit_of_measurement: s, mode: box }
+        buffer_wait_timeout:
+          name: "Seekdan keyin bufer kutish timeouti (s)"
+          description: >
+            Seekdan keyin Arylic streamni qayta yuklaydi; ovoz CHIQQUNCHA shuncha
+            kutamiz. Crossfade aynan shundan keyin boshlanadi.
+          default: 6
+          selector:
+            number: { min: 0, max: 30, step: 1, unit_of_measurement: s, mode: box }
+
+mode: restart
+max_exceeded: silent
+
+# Barcha input'lar shu yerda o'zgaruvchiga bog'lanadi, keyin shartlar va
+# amallarda template ichida ishlatiladi.
+variables:
+  alice_player: !input alice_player
+  arylic_player: !input arylic_player
+  arylic_floor: !input arylic_floor
+  arylic_target: !input arylic_target
+  alice_end_volume: !input alice_end_volume
+  sync_offset: !input sync_offset
+  steps: !input steps
+  arylic_headstart_ms: !input arylic_headstart_ms
+  alice_gap_ms: !input alice_gap_ms
+  track_uri_prefix: !input track_uri_prefix
+  media_type: !input media_type
+  play_wait_timeout: !input play_wait_timeout
+  buffer_wait_timeout: !input buffer_wait_timeout
+
+triggers:
+  - trigger: state
+    entity_id: !input alice_player
+    attribute: media_content_id
+    id: new_track
+  - trigger: state
+    entity_id: !input alice_player
+    to: playing
+    id: start_playing
+
+conditions:
+  - condition: template
+    value_template: "{{ is_state(alice_player, 'playing') }}"
+  - condition: template
+    value_template: "{{ state_attr(alice_player, 'media_content_type') == 'music' }}"
+  - condition: template
+    value_template: >
+      {{ state_attr(alice_player, 'media_content_id')
+         not in [none, '', 'unknown', 'unavailable'] }}
+
+actions:
+  - variables:
+      track_id: "{{ state_attr(alice_player, 'media_content_id') }}"
+      ma_track_uri: "{{ track_uri_prefix ~ track_id }}"
+      alice_start_volume: "{{ state_attr(alice_player, 'volume_level') | float(0.5) }}"
+
+  # 1) Arylic'ni past (floor) darajaga qo'yib, o'sha trekni boshlaymiz.
+  - action: media_player.volume_set
+    target:
+      entity_id: !input arylic_player
+    data:
+      volume_level: "{{ arylic_floor | float(0.05) }}"
+  - action: music_assistant.play_media
+    target:
+      entity_id: !input arylic_player
+    data:
+      media_id: "{{ ma_track_uri }}"
+      media_type: "{{ media_type }}"
+
+  # 2) Arylic 'playing' bo'lguncha kutamiz.
+  - wait_template: "{{ is_state(arylic_player, 'playing') }}"
+    timeout: "{{ play_wait_timeout | int }}"
+    continue_on_timeout: true
+
+  # 3) Alice turgan sekundga sinxron seek (offset bilan).
+  - variables:
+      seek_target: >
+        {% set pos = state_attr(alice_player, 'media_position') | float(0) %}
+        {% set upd = state_attr(alice_player, 'media_position_updated_at') %}
+        {% if upd %}
+          {{ (pos + (as_timestamp(now()) - as_timestamp(upd)) + (sync_offset | float(0))) | int }}
+        {% else %}
+          {{ (pos + (sync_offset | float(0))) | int }}
+        {% endif %}
+  - action: media_player.media_seek
+    target:
+      entity_id: !input arylic_player
+    data:
+      seek_position: "{{ seek_target | int }}"
+    continue_on_error: true
+
+  # 4) MUHIM: seekdan keyin Arylic streamni qayta buferlaydi.
+  #    Ovoz CHIQQUNCHA (pozitsiya seek nuqtasiga yetguncha) kutamiz.
+  - wait_template: >
+      {{ is_state(arylic_player, 'playing')
+         and (state_attr(arylic_player, 'media_position') | float(0)) >= (seek_target | float(0) - 1) }}
+    timeout: "{{ buffer_wait_timeout | int }}"
+    continue_on_timeout: true
+  - delay: { milliseconds: 400 }
+
+  # 5) Navbatma-navbat crossfade (Arylic oldinda):
+  #    har qadam -> Arylic + bir pog'ona, head-start pauza, keyin Alice - bir pog'ona.
+  - repeat:
+      count: "{{ steps | int }}"
+      sequence:
+        - action: media_player.volume_set
+          target:
+            entity_id: !input arylic_player
+          data:
+            volume_level: >
+              {% set start = arylic_floor | float(0.05) %}
+              {% set finish = arylic_target | float(0.35) %}
+              {% set n = steps | int %}
+              {{ [finish, start + ((finish - start) / n * repeat.index)] | min | round(3) }}
+        - delay: "{{ (arylic_headstart_ms | int) / 1000 }}"
+        - action: media_player.volume_set
+          target:
+            entity_id: !input alice_player
+          data:
+            volume_level: >
+              {% set start = alice_start_volume | float(0.5) %}
+              {% set finish = alice_end_volume | float(0) %}
+              {% set n = steps | int %}
+              {{ [finish, start - ((start - finish) / n * repeat.index)] | max | round(3) }}
+        - delay: "{{ (alice_gap_ms | int) / 1000 }}"

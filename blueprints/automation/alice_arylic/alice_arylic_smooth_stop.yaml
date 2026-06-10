@@ -1,0 +1,109 @@
+blueprint:
+  name: "Alice ⏹ → Arylic | Smooth Stop & Restore"
+  description: >
+    Alice (Yandex Station) da musiqa to'xtaganda (paused / idle / standby / off),
+    Arylic (Music Assistant) ovozi yumshoq pasayadi va pauza qilinadi,
+    so'ng Alice ovozi belgilangan darajaga (masalan 50%) qaytariladi.
+
+    Bu blueprint "Smooth Handoff (Start)" bilan juft bo'lib ishlaydi:
+    Start Alice ovozini 0 ga tushiradi, Stop esa uni qayta tiklaydi.
+  domain: automation
+  source_url: https://github.com/YOUR_GH_USER/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
+  input:
+    players:
+      name: "🔊 Speakerlar / Players"
+      icon: mdi:speaker-multiple
+      input:
+        alice_player:
+          name: "Alice (Yandex Station)"
+          description: "Start blueprintdagi BIR XIL Alice entity'sini tanlang."
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+        arylic_player:
+          name: "Arylic (Music Assistant)"
+          description: "Start blueprintdagi BIR XIL Arylic entity'sini tanlang."
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+    options:
+      name: "🎚 Sozlamalar / Options"
+      icon: mdi:tune-vertical
+      input:
+        arylic_fade_floor:
+          name: "Arylic pasayish chegarasi"
+          description: "Pauzadan oldin Arylic shu darajagacha tushadi. 0.01 ≈ jim."
+          default: 0.01
+          selector:
+            number: { min: 0, max: 1, step: 0.01, mode: slider }
+        alice_restore_volume:
+          name: "Alice qaytariladigan ovoz"
+          description: "To'xtagandan keyin Alice shu darajaga qaytadi (masalan 0.5 = 50%)."
+          default: 0.5
+          selector:
+            number: { min: 0, max: 1, step: 0.01, mode: slider }
+        steps:
+          name: "Pasayish qadamlari soni"
+          description: "Ko'p = silliqroq, kam = tezroq."
+          default: 10
+          selector:
+            number: { min: 1, max: 40, step: 1, mode: box }
+        step_delay_ms:
+          name: "Har qadam orasidagi kutish (ms)"
+          default: 200
+          selector:
+            number: { min: 0, max: 1000, step: 10, unit_of_measurement: ms, mode: box }
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  alice_player: !input alice_player
+  arylic_player: !input arylic_player
+  arylic_fade_floor: !input arylic_fade_floor
+  alice_restore_volume: !input alice_restore_volume
+  steps: !input steps
+  step_delay_ms: !input step_delay_ms
+
+triggers:
+  - trigger: state
+    entity_id: !input alice_player
+    from: playing
+    to:
+      - idle
+      - paused
+      - standby
+      - "off"
+
+actions:
+  - variables:
+      arylic_start_volume: "{{ state_attr(arylic_player, 'volume_level') | float(0.35) }}"
+
+  # 1) Arylic ovozini joriy darajadan floor gacha yumshoq tushiramiz.
+  - repeat:
+      count: "{{ steps | int }}"
+      sequence:
+        - action: media_player.volume_set
+          target:
+            entity_id: !input arylic_player
+          data:
+            volume_level: >
+              {% set start = arylic_start_volume | float(0.35) %}
+              {% set finish = arylic_fade_floor | float(0.01) %}
+              {% set n = steps | int %}
+              {{ [finish, start - ((start - finish) / n * repeat.index)] | max | round(3) }}
+        - delay: "{{ (step_delay_ms | int) / 1000 }}"
+
+  # 2) Arylic'ni pauza qilamiz.
+  - action: media_player.media_pause
+    target:
+      entity_id: !input arylic_player
+
+  # 3) Alice ovozini qayta tiklaymiz.
+  - action: media_player.volume_set
+    target:
+      entity_id: !input alice_player
+    data:
+      volume_level: "{{ alice_restore_volume | float(0.5) }}"

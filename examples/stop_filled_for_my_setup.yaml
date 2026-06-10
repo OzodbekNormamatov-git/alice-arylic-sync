@@ -1,0 +1,54 @@
+# Sizning entity'laringiz bilan to'ldirilgan TAYYOR Stop avtomatikasi (blueprintsiz).
+
+alias: "Alice stop -> Arylic | Smooth Stop & Restore (filled)"
+description: >-
+  Alice'da musiqa to'xtasa, Arylic yumshoq pasayadi va pauza bo'ladi,
+  Alice ovozi 50% ga qaytadi.
+mode: restart
+max_exceeded: silent
+
+variables:
+  alice_player: media_player.yandex_station_l01szd700a8eac
+  arylic_player: media_player.soundsystem_e5da_2
+  arylic_fade_floor: 0.01
+  alice_restore_volume: 0.5
+  steps: 10
+  step_delay_ms: 200
+
+triggers:
+  - trigger: state
+    entity_id: media_player.yandex_station_l01szd700a8eac
+    from: playing
+    to:
+      - idle
+      - paused
+      - standby
+      - "off"
+
+actions:
+  - variables:
+      arylic_start_volume: "{{ state_attr(arylic_player, 'volume_level') | float(0.35) }}"
+
+  - repeat:
+      count: "{{ steps | int }}"
+      sequence:
+        - action: media_player.volume_set
+          target:
+            entity_id: "{{ arylic_player }}"
+          data:
+            volume_level: >
+              {% set start = arylic_start_volume | float(0.35) %}
+              {% set finish = arylic_fade_floor | float(0.01) %}
+              {% set n = steps | int %}
+              {{ [finish, start - ((start - finish) / n * repeat.index)] | max | round(3) }}
+        - delay: "{{ (step_delay_ms | int) / 1000 }}"
+
+  - action: media_player.media_pause
+    target:
+      entity_id: "{{ arylic_player }}"
+
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ alice_player }}"
+    data:
+      volume_level: "{{ alice_restore_volume | float(0.5) }}"
