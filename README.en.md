@@ -53,16 +53,16 @@ play at once and you get an echo.
 ### Option A — Blueprint URL (easiest, no HACS)
 
 Settings → Automations & Scenes → Blueprints → **Import Blueprint**, then paste
-(replace `YOUR_GH_USER`):
+(replace `OzodbekNormamatov-git`):
 
 ```
-https://github.com/YOUR_GH_USER/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_handoff_start.yaml
-https://github.com/YOUR_GH_USER/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
+https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_handoff_start.yaml
+https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
 ```
 
 ### Option B — HACS
 
-HACS → ⋮ → **Custom repositories** → URL `https://github.com/YOUR_GH_USER/alice-arylic-sync`,
+HACS → ⋮ → **Custom repositories** → URL `https://github.com/OzodbekNormamatov-git/alice-arylic-sync`,
 category **Automation** → Add → Download.
 
 Then create one automation from each blueprint (Use blueprint → pick your entities).

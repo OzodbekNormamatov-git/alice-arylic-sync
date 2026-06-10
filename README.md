@@ -65,15 +65,15 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 
 1. Repo'ni GitHub'ga push qiling (pastda buyruqlar bor).
 2. Home Assistant'da: **Settings → Automations & Scenes → Blueprints → Import Blueprint**.
-3. Quyidagi URL'larni navbatma-navbat qo'ying (`YOUR_GH_USER` ni o'zingiznikiga almashtiring):
+3. Quyidagi URL'larni navbatma-navbat qo'ying (`OzodbekNormamatov-git` ni o'zingiznikiga almashtiring):
 
    **Start:**
    ```
-   https://github.com/YOUR_GH_USER/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_handoff_start.yaml
+   https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_handoff_start.yaml
    ```
    **Stop:**
    ```
-   https://github.com/YOUR_GH_USER/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
+   https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
    ```
 
 > 💡 Yoki to'g'ridan-to'g'ri "My Home Assistant" havolasi:
@@ -82,7 +82,7 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 ### B-variant — HACS orqali (yangilanishlarni oson olish uchun)
 
 1. **HACS → ⋮ (yuqori o'ng) → Custom repositories**.
-2. Repo URL: `https://github.com/YOUR_GH_USER/alice-arylic-sync`, **Type / Category: `Automation`** (Blueprint).
+2. Repo URL: `https://github.com/OzodbekNormamatov-git/alice-arylic-sync`, **Type / Category: `Automation`** (Blueprint).
 3. **Add** → so'ng ro'yxatdan **Alice ↔ Arylic Smooth Sync** ni **Download**.
 4. HACS blueprintlarni `config/blueprints/automation/alice_arylic/` ga joylaydi.
 
