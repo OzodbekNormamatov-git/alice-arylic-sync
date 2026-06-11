@@ -5,9 +5,8 @@
 > uzatadigan va to'xtaganda yana yumshoq qaytaradigan Home Assistant blueprint
 > to'plami.
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 ![type](https://img.shields.io/badge/type-Blueprints-blue)
-![ha](https://img.shields.io/badge/Home%20Assistant-2024.6%2B-41BDF5)
+![ha](https://img.shields.io/badge/Home%20Assistant-2024.10%2B-41BDF5)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -47,7 +46,8 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 
 ## ✅ Talablar (Requirements)
 
-1. **Home Assistant** 2024.6 yoki undan yangi (sozlamalar `sections` ko'rinishi uchun).
+1. **Home Assistant** 2024.10 yoki undan yangi (zamonaviy `triggers:`/`actions:`
+   avtomatika sintaksisi uchun).
 2. **[Music Assistant](https://music-assistant.io/)** integratsiyasi o'rnatilgan.
 3. **Arylic / LinkPlay** speaker Music Assistant'ga player sifatida qo'shilgan.
 4. **Yandex Station** Home Assistant'ga ulangan (mas.
@@ -61,11 +61,17 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 
 ## 🚀 O'rnatish
 
-### A-variant — Blueprint URL orqali (eng oson, HACS shart emas)
+### A-variant — Import tugmasi bilan (eng oson)
 
-1. Repo'ni GitHub'ga push qiling (pastda buyruqlar bor).
-2. Home Assistant'da: **Settings → Automations & Scenes → Blueprints → Import Blueprint**.
-3. Quyidagi URL'larni navbatma-navbat qo'ying (`OzodbekNormamatov-git` ni o'zingiznikiga almashtiring):
+Quyidagi tugmani bossangiz, o'z Home Assistant'ingizda tayyor import oynasi ochiladi:
+
+| Blueprint | Import |
+|---|---|
+| **Smooth Handoff (Start)** | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FOzodbekNormamatov-git%2Falice-arylic-sync%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Falice_arylic%2Falice_arylic_handoff_start.yaml) |
+| **Smooth Stop & Restore** | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FOzodbekNormamatov-git%2Falice-arylic-sync%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Falice_arylic%2Falice_arylic_smooth_stop.yaml) |
+
+Yoki qo'lda: **Settings → Automations & Scenes → Blueprints → Import Blueprint**
+va quyidagi URL'larni navbatma-navbat qo'ying:
 
    **Start:**
    ```
@@ -76,15 +82,15 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
    https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
    ```
 
-> 💡 Yoki to'g'ridan-to'g'ri "My Home Assistant" havolasi:
-> `https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=<YUQORIDAGI_URL>`
+> ℹ️ HACS blueprint'larni tarqatishni qo'llab-quvvatlamaydi (unda bunday
+> kategoriya yo'q) — shuning uchun bu repo HA'ning o'z **Import Blueprint**
+> mexanizmi bilan o'rnatiladi.
 
-### B-variant — HACS orqali (yangilanishlarni oson olish uchun)
+### B-variant — Qo'lda nusxalash
 
-1. **HACS → ⋮ (yuqori o'ng) → Custom repositories**.
-2. Repo URL: `https://github.com/OzodbekNormamatov-git/alice-arylic-sync`, **Type / Category: `Automation`** (Blueprint).
-3. **Add** → so'ng ro'yxatdan **Alice ↔ Arylic Smooth Sync** ni **Download**.
-4. HACS blueprintlarni `config/blueprints/automation/alice_arylic/` ga joylaydi.
+`blueprints/automation/alice_arylic/` dagi ikkala `.yaml` faylni HA
+konfiguratsiyangizdagi `config/blueprints/automation/alice_arylic/` papkasiga
+nusxalang va Home Assistant'ni qayta ishga tushiring.
 
 ### Avtomatika yaratish (ikkala variantdan keyin ham)
 
@@ -113,7 +119,7 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 | **Track URI prefiksi** | `yandex_music://track/` | media_content_id oldiga qo'shiladigan URI |
 | **media_type** | `track` | MA media turi |
 | **Play wait timeout (s)** | `12` | Arylic "playing" bo'lishini kutish |
-| **Buffer wait timeout (s)** | `6` | Seekdan keyin bufer to'lishini kutish |
+| **Buffer wait timeout (s)** | `6` | Seekdan keyin player yangi pozitsiyani qabul qilishini kutish |
 
 **Boshlanish/oxiri (default qiymatlar bilan):**
 - Arylic: `5% → 7.5% → 10% → ... → 35%` (har qadam **+2.5%**)
@@ -150,7 +156,8 @@ To'liq qo'llanma: [`docs/TUNING.md`](docs/TUNING.md).
 2. Arylic `floor` ovozga qo'yiladi, o'sha trek `music_assistant.play_media` bilan boshlanadi.
 3. Arylic `playing` bo'lguncha kutiladi.
 4. Alice turgan sekund hisoblanib (`sync_offset` qo'shilib), Arylic shu joyga `media_seek` qilinadi.
-5. ❗ Seekdan keyin Arylic streamni qayta buferlaydi — ovoz **chiqquncha** kutiladi.
+5. ❗ Seekdan keyin Arylic streamni qayta buferlaydi — player yangi pozitsiyani
+   **qabul qilguncha** kutiladi (+ qisqa bufer pauzasi).
 6. Navbatma-navbat crossfade: har qadam → **Arylic +** → head-start pauza → **Alice −**.
 7. Oxirida Alice `end volume` (0), Arylic `target` ovozga ega bo'ladi.
 
@@ -177,12 +184,11 @@ alice-arylic-sync/
 ├── blueprints/automation/alice_arylic/
 │   ├── alice_arylic_handoff_start.yaml     # Start (crossfade handoff)
 │   └── alice_arylic_smooth_stop.yaml       # Stop (fade + restore)
-├── examples/                               # entity'lar to'ldirilgan tayyor avtomatikalar
+├── examples/                               # namuna (to'ldiriladigan) avtomatikalar
 ├── docs/
 │   ├── TUNING.md
 │   └── TROUBLESHOOTING.md
-├── hacs.json
-├── info.md
+├── .github/workflows/validate.yaml         # CI: yamllint + blueprint tekshiruvi
 ├── README.md  /  README.en.md
 ├── CHANGELOG.md
 └── LICENSE

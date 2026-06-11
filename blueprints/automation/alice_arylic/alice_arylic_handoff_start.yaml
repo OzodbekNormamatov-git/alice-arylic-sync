@@ -10,6 +10,8 @@ blueprint:
     Talab: Music Assistant integratsiyasi va Arylic Music Assistant'ga ulangan
     bo'lishi kerak (chiqish entity'si Music Assistant'niki bo'lsin).
   domain: automation
+  homeassistant:
+    min_version: 2024.10.0
   source_url: https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_handoff_start.yaml
   input:
     players:
@@ -129,8 +131,10 @@ blueprint:
         buffer_wait_timeout:
           name: "Seekdan keyin bufer kutish timeouti (s)"
           description: >
-            Seekdan keyin Arylic streamni qayta yuklaydi; ovoz CHIQQUNCHA shuncha
-            kutamiz. Crossfade aynan shundan keyin boshlanadi.
+            Seekdan keyin player yangi pozitsiyani qabul qilishini shuncha
+            kutamiz (qabul qilinmasa ham davom etadi). Eslatma: HA ovoz
+            chiqqanini bilolmaydi — asosiy sinxron tugmalari Sync offset va
+            Arylic head-start.
           default: 6
           selector:
             number: { min: 0, max: 30, step: 1, unit_of_measurement: s, mode: box }
@@ -199,16 +203,18 @@ actions:
     timeout: "{{ play_wait_timeout | int }}"
     continue_on_timeout: true
 
-  # 3) Alice turgan sekundga sinxron seek (offset bilan).
+  # 3) Alice turgan sekundga sinxron seek (offset bilan, manfiy bo'lmasin).
   - variables:
       seek_target: >
         {% set pos = state_attr(alice_player, 'media_position') | float(0) %}
         {% set upd = state_attr(alice_player, 'media_position_updated_at') %}
         {% if upd %}
-          {{ (pos + (as_timestamp(now()) - as_timestamp(upd)) + (sync_offset | float(0))) | int }}
+          {% set t = pos + (as_timestamp(now()) - as_timestamp(upd)) + (sync_offset | float(0)) %}
         {% else %}
-          {{ (pos + (sync_offset | float(0))) | int }}
+          {% set t = pos + (sync_offset | float(0)) %}
         {% endif %}
+        {{ [0, t | int] | max }}
+      arylic_pos_updated_before_seek: "{{ state_attr(arylic_player, 'media_position_updated_at') }}"
   - action: media_player.media_seek
     target:
       entity_id: !input arylic_player
@@ -216,11 +222,16 @@ actions:
       seek_position: "{{ seek_target | int }}"
     continue_on_error: true
 
-  # 4) MUHIM: seekdan keyin Arylic streamni qayta buferlaydi.
-  #    Ovoz CHIQQUNCHA (pozitsiya seek nuqtasiga yetguncha) kutamiz.
+  # 4) Seekdan keyin player yangi pozitsiyani QABUL QILISHINI kutamiz:
+  #    integratsiya seekdan keyingi pozitsiya yangilanishini yuborgan bo'lishi
+  #    kerak (eski snapshot bilan solishtiramiz). Eslatma: ba'zi integratsiyalar
+  #    kichik (~5 s gacha) sakrashlarda yangilanish yubormaydi — unda timeout
+  #    ishlaydi. Keyingi qisqa delay bufer uchun zaxira.
   - wait_template: >
       {{ is_state(arylic_player, 'playing')
-         and (state_attr(arylic_player, 'media_position') | float(0)) >= (seek_target | float(0) - 1) }}
+         and (state_attr(arylic_player, 'media_position_updated_at') | string)
+             != (arylic_pos_updated_before_seek | string)
+         and (state_attr(arylic_player, 'media_position') | float(0)) >= (seek_target | float(0) - 2) }}
     timeout: "{{ buffer_wait_timeout | int }}"
     continue_on_timeout: true
   - delay: { milliseconds: 400 }

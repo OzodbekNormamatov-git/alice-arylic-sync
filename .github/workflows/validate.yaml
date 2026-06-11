@@ -8,13 +8,25 @@ on:
     - cron: "0 4 * * 1"
 
 jobs:
-  hacs:
-    name: HACS validation
+  validate:
+    name: Lint & blueprint schema
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: HACS Action
-        uses: hacs/action@main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          category: blueprint
+          python-version: "3.12"
+
+      - name: Install tools
+        run: pip install yamllint pyyaml
+
+      - name: YAML lint
+        run: >
+          yamllint -d "{extends: relaxed, rules: {line-length: disable,
+          trailing-spaces: {level: warning}}}" blueprints/ examples/
+
+      - name: Blueprint schema check
+        run: python .github/scripts/check_blueprints.py

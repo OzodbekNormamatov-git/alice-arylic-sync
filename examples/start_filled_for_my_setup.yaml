@@ -1,7 +1,13 @@
-# Sizning entity'laringiz bilan to'ldirilgan TAYYOR avtomatika (blueprintsiz).
+# Namuna avtomatika (blueprintsiz) — AVVAL ikkala media_player entity ID'sini
+# O'ZINGIZNIKIGA almashtiring (pastdagi DIQQAT izohiga qarang).
 # Settings -> Automations -> ... -> Edit in YAML ichiga shu kodni qo'ying,
 # yoki configuration / automations.yaml ga qo'shing.
 # Blueprint asosiy manba — bu shunchaki qulay nusxa.
+#
+# DIQQAT: Alice entity'si bu faylda 3 joyda uchraydi (variables + 2 ta trigger),
+# Arylic entity'si esa variables'da. Triggerlar variables blokidan foydalana
+# OLMAYDI — faqat variables'ni o'zgartirsangiz, triggerlar eski entity'da qolib,
+# avtomatika hech qachon ishga tushmaydi. HAMMA joyda almashtiring.
 
 alias: "Alice -> Arylic | Smooth Handoff (filled)"
 description: >-
@@ -11,8 +17,8 @@ mode: restart
 max_exceeded: silent
 
 variables:
-  alice_player: media_player.yandex_station_l01szd700a8eac
-  arylic_player: media_player.soundsystem_e5da_2
+  alice_player: media_player.YOUR_YANDEX_STATION
+  arylic_player: media_player.YOUR_ARYLIC_MA_PLAYER
   arylic_floor: 0.05
   arylic_target: 0.35
   alice_end_volume: 0
@@ -27,11 +33,11 @@ variables:
 
 triggers:
   - trigger: state
-    entity_id: media_player.yandex_station_l01szd700a8eac
+    entity_id: media_player.YOUR_YANDEX_STATION
     attribute: media_content_id
     id: new_track
   - trigger: state
-    entity_id: media_player.yandex_station_l01szd700a8eac
+    entity_id: media_player.YOUR_YANDEX_STATION
     to: playing
     id: start_playing
 
@@ -67,15 +73,18 @@ actions:
     timeout: "{{ play_wait_timeout | int }}"
     continue_on_timeout: true
 
+  # Sinxron seek (offset bilan, manfiy bo'lmasin).
   - variables:
       seek_target: >
         {% set pos = state_attr(alice_player, 'media_position') | float(0) %}
         {% set upd = state_attr(alice_player, 'media_position_updated_at') %}
         {% if upd %}
-          {{ (pos + (as_timestamp(now()) - as_timestamp(upd)) + (sync_offset | float(0))) | int }}
+          {% set t = pos + (as_timestamp(now()) - as_timestamp(upd)) + (sync_offset | float(0)) %}
         {% else %}
-          {{ (pos + (sync_offset | float(0))) | int }}
+          {% set t = pos + (sync_offset | float(0)) %}
         {% endif %}
+        {{ [0, t | int] | max }}
+      arylic_pos_updated_before_seek: "{{ state_attr(arylic_player, 'media_position_updated_at') }}"
   - action: media_player.media_seek
     target:
       entity_id: "{{ arylic_player }}"
@@ -83,9 +92,13 @@ actions:
       seek_position: "{{ seek_target | int }}"
     continue_on_error: true
 
+  # Player yangi pozitsiyani qabul qilishini kutamiz (kichik sakrashlarda
+  # integratsiya yangilanish yubormasligi mumkin — unda timeout ishlaydi).
   - wait_template: >
       {{ is_state(arylic_player, 'playing')
-         and (state_attr(arylic_player, 'media_position') | float(0)) >= (seek_target | float(0) - 1) }}
+         and (state_attr(arylic_player, 'media_position_updated_at') | string)
+             != (arylic_pos_updated_before_seek | string)
+         and (state_attr(arylic_player, 'media_position') | float(0)) >= (seek_target | float(0) - 2) }}
     timeout: "{{ buffer_wait_timeout | int }}"
     continue_on_timeout: true
   - delay: { milliseconds: 400 }

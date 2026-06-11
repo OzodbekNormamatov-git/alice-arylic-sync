@@ -8,6 +8,8 @@ blueprint:
     Bu blueprint "Smooth Handoff (Start)" bilan juft bo'lib ishlaydi:
     Start Alice ovozini 0 ga tushiradi, Stop esa uni qayta tiklaydi.
   domain: automation
+  homeassistant:
+    min_version: 2024.10.0
   source_url: https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
   input:
     players:
@@ -76,6 +78,18 @@ triggers:
       - paused
       - standby
       - "off"
+
+# Shartlar: (1) Arylic haqiqatan chalayotgan bo'lsin (handoff bo'lgan deb
+# taxmin qilamiz) — aks holda Arylic'dagi mustaqil ijroni pauza qilib,
+# Alice ovozini bekorga o'zgartirib yuboramiz; (2) Alice'da aynan MUSIQA
+# to'xtagan bo'lsin — ovozli javob, yangilik yoki budilnik tugaganda emas
+# (Start blueprintdagi musiqa sharti bilan juftlik).
+conditions:
+  - condition: template
+    value_template: "{{ is_state(arylic_player, 'playing') }}"
+  - condition: template
+    value_template: >
+      {{ (trigger.from_state.attributes.media_content_type | default('')) == 'music' }}
 
 actions:
   - variables:

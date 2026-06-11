@@ -1,4 +1,9 @@
-# Sizning entity'laringiz bilan to'ldirilgan TAYYOR Stop avtomatikasi (blueprintsiz).
+# Namuna Stop avtomatikasi (blueprintsiz) — AVVAL ikkala media_player entity
+# ID'sini O'ZINGIZNIKIGA almashtiring.
+#
+# DIQQAT: Alice entity'si bu faylda 2 joyda uchraydi (variables + trigger).
+# Triggerlar variables blokidan foydalana OLMAYDI — faqat variables'ni
+# o'zgartirsangiz, trigger eski entity'da qolib, avtomatika ishga tushmaydi.
 
 alias: "Alice stop -> Arylic | Smooth Stop & Restore (filled)"
 description: >-
@@ -8,8 +13,8 @@ mode: restart
 max_exceeded: silent
 
 variables:
-  alice_player: media_player.yandex_station_l01szd700a8eac
-  arylic_player: media_player.soundsystem_e5da_2
+  alice_player: media_player.YOUR_YANDEX_STATION
+  arylic_player: media_player.YOUR_ARYLIC_MA_PLAYER
   arylic_fade_floor: 0.01
   alice_restore_volume: 0.5
   steps: 10
@@ -17,13 +22,22 @@ variables:
 
 triggers:
   - trigger: state
-    entity_id: media_player.yandex_station_l01szd700a8eac
+    entity_id: media_player.YOUR_YANDEX_STATION
     from: playing
     to:
       - idle
       - paused
       - standby
       - "off"
+
+# (1) Arylic haqiqatan chalayotgan bo'lsin; (2) Alice'da aynan MUSIQA
+# to'xtagan bo'lsin (ovozli javob/yangilik/budilnik emas).
+conditions:
+  - condition: template
+    value_template: "{{ is_state(arylic_player, 'playing') }}"
+  - condition: template
+    value_template: >
+      {{ (trigger.from_state.attributes.media_content_type | default('')) == 'music' }}
 
 actions:
   - variables:
