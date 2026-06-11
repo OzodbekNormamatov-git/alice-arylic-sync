@@ -3,6 +3,20 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.2.0] - 2026-06-11
+
+### Qo'shildi
+- **Multi-room:** integratsiyada endi **bir nechta Arylic kolonka** tanlash
+  mumkin. Musiqa boshlanganda ular Music Assistant orqali avtomatik guruhlanadi
+  (birinchi tanlangani yetakchi) va barcha xonalarda **bir xil trek sinxron**
+  chaladi; ovoz qadamlari hammasiga bitta buyruqda yuboriladi.
+- Eski (bitta kolonkali) sozlamalar avtomatik yangi formatga o'tkaziladi —
+  hech narsa qilish shart emas.
+
+### O'zgartirildi
+- Config oynasida "Arylic (chiqish)" maydoni endi ko'p tanlovli
+  (`arylic_entities`).
+
 ## [1.1.0] - 2026-06-11
 
 ### Qo'shildi

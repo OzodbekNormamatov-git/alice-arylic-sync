@@ -3,7 +3,8 @@
 DOMAIN = "alice_arylic_sync"
 
 CONF_ALICE_ENTITY = "alice_entity"
-CONF_ARYLIC_ENTITY = "arylic_entity"
+CONF_ARYLIC_ENTITY = "arylic_entity"  # v1 entries (single output) — migrated
+CONF_ARYLIC_ENTITIES = "arylic_entities"  # v2: one or more outputs (multi-room)
 
 # Options (all tunable from the UI). Defaults mirror the blueprint defaults.
 OPT_SYNC_OFFSET = "sync_offset"

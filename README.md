@@ -73,10 +73,12 @@ integratsiyalar kabi) yoki **Blueprint** (yengilroq, YAML avtomatika).
    so'ng Home Assistant'ni qayta ishga tushiring.
 4. **Settings → Devices & Services → Add Integration** → qidiruvga
    "**Alice ↔ Arylic Sync**" deb yozing.
-5. Ochilgan oynada ikkita kolonkani tanlang:
+5. Ochilgan oynada kolonkalarni tanlang:
    - **Alice (Yandex Station)** — manba;
-   - **Arylic (Music Assistant)** — chiqish (ro'yxatda faqat Music Assistant
-     player'lari ko'rinadi, adashib bo'lmaydi).
+   - **Arylic (Music Assistant)** — chiqish: **bitta yoki bir nechta** kolonka
+     (ro'yxatda faqat Music Assistant player'lari ko'rinadi, adashib bo'lmaydi).
+     Bir nechta tanlasangiz — **multi-room**: hammasi guruhlashtirilib, bir xil
+     musiqani sinxron chaladi.
 6. Tamom — shu zahoti ishlay boshlaydi. **Barcha sozlamalar** (sync offset,
    boshlash kechikishi, qadamlar, head-start, ovoz darajalari, timeoutlar)
    integratsiya kartasidagi **Configure** tugmasida.
@@ -129,6 +131,31 @@ nusxalang va Home Assistant'ni qayta ishga tushiring.
 
 > Blueprint ishlatsangiz, integratsiyani o'rnatmang (ikkalasi birga ishlasa,
 > har bir trek IKKI marta uzatiladi).
+
+---
+
+## 🏠 Multi-room (barcha xonalarda bir xil musiqa)
+
+Ikki yo'l bor:
+
+**1-yo'l — integratsiyada bir nechta kolonka tanlash (eng oson).**
+Integratsiyani qo'shayotganda (yoki o'chirib qayta qo'shib) **Arylic kolonkalar**
+ro'yxatidan barcha xonalardagi kolonkalarni belgilang. Musiqa boshlanganda
+integratsiya ularni Music Assistant orqali avtomatik **guruhlab** (birinchi
+tanlangani — yetakchi), hammasida bir xil trekni **sinxron** boshlaydi. Ovoz
+ko'tarilish qadamlari ham hammasiga bitta buyruqda boradi — xonalar orasida
+farq sezilmaydi.
+
+**2-yo'l — Music Assistant'da doimiy guruh yaratish.**
+Music Assistant'da **Settings → Players → Add group player** qilib barcha
+Arylic'lardan doimiy guruh tuzing — HA'da yangi `media_player` entity paydo
+bo'ladi. Integratsiyada chiqish sifatida o'sha **guruh entity'sini** (bitta)
+tanlang. Bu yo'l guruhni MA o'zi boshqarishini xohlasangiz qulay.
+
+> ⚠️ Sinxron ijro uchun kolonkalar Music Assistant'da bir-biri bilan
+> guruhlasha oladigan turda bo'lishi kerak (masalan, hammasi AirPlay yoki
+> hammasi bitta LinkPlay oilasi). Aralash turlar guruhlashmasa, MA'da
+> "Universal Group" yaratib, 2-yo'ldan foydalaning.
 
 ---
 

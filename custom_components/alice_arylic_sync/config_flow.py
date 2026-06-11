@@ -13,7 +13,7 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_ALICE_ENTITY,
-    CONF_ARYLIC_ENTITY,
+    CONF_ARYLIC_ENTITIES,
     DEFAULTS,
     DOMAIN,
     OPT_ALICE_END_VOLUME,
@@ -55,9 +55,9 @@ def _number(min_: float, max_: float, step: float, unit: str | None = None) -> s
 
 
 class AliceArylicSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Initial setup: choose the two players."""
+    """Initial setup: choose the players (one or more outputs = multi-room)."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -65,13 +65,16 @@ class AliceArylicSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            if user_input[CONF_ALICE_ENTITY] == user_input[CONF_ARYLIC_ENTITY]:
+            outputs: list[str] = user_input[CONF_ARYLIC_ENTITIES]
+            if not outputs:
+                errors["base"] = "no_outputs"
+            elif user_input[CONF_ALICE_ENTITY] in outputs:
                 errors["base"] = "same_entity"
             elif not self.hass.services.has_service("music_assistant", "play_media"):
                 errors["base"] = "music_assistant_missing"
             else:
-                unique_id = (
-                    f"{user_input[CONF_ALICE_ENTITY]}__{user_input[CONF_ARYLIC_ENTITY]}"
+                unique_id = "__".join(
+                    [user_input[CONF_ALICE_ENTITY], *sorted(outputs)]
                 )
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
@@ -84,9 +87,11 @@ class AliceArylicSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_ALICE_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="media_player")
                 ),
-                vol.Required(CONF_ARYLIC_ENTITY): selector.EntitySelector(
+                vol.Required(CONF_ARYLIC_ENTITIES): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain="media_player", integration="music_assistant"
+                        domain="media_player",
+                        integration="music_assistant",
+                        multiple=True,
                     )
                 ),
             }
@@ -94,11 +99,12 @@ class AliceArylicSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
     def _make_title(self, user_input: dict[str, Any]) -> str:
-        names = []
-        for entity_id in (user_input[CONF_ALICE_ENTITY], user_input[CONF_ARYLIC_ENTITY]):
+        def name(entity_id: str) -> str:
             state = self.hass.states.get(entity_id)
-            names.append(state.name if state else entity_id)
-        return f"{names[0]} → {names[1]}"
+            return state.name if state else entity_id
+
+        outputs = " + ".join(name(e) for e in user_input[CONF_ARYLIC_ENTITIES])
+        return f"{name(user_input[CONF_ALICE_ENTITY])} → {outputs}"
 
     @staticmethod
     @callback

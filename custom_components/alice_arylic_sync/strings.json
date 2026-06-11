@@ -3,23 +3,24 @@
     "step": {
       "user": {
         "title": "Alice ↔ Arylic Sync",
-        "description": "Manba (Yandex Station / Alice) va chiqish (Music Assistant'dagi Arylic) kolonkalarini tanlang. Barcha vaqt va ovoz sozlamalarini keyinroq «Sozlash» (Configure) orqali o'zgartirishingiz mumkin.",
+        "description": "Manba (Yandex Station / Alice) va chiqish kolonka(lar)ni tanlang. Bir nechta kolonka tanlasangiz — multi-room: hammasi avtomatik guruhlanib, bir xil musiqani sinxron chaladi. Barcha vaqt va ovoz sozlamalarini keyinroq «Sozlash» (Configure) orqali o'zgartirishingiz mumkin.",
         "data": {
           "alice_entity": "Alice (Yandex Station) — manba",
-          "arylic_entity": "Arylic (Music Assistant) — chiqish"
+          "arylic_entities": "Arylic kolonkalar (Music Assistant) — chiqish"
         },
         "data_description": {
           "alice_entity": "Musiqa shu yerda boshlanadi va ovoz bilan boshqariladigan media player.",
-          "arylic_entity": "Arylic kolonkangizning Music Assistant'dagi entity'si (xom LinkPlay entity emas)."
+          "arylic_entities": "Arylic kolonkalaringizning Music Assistant'dagi entity'lari (xom LinkPlay entity emas). Bir nechta tanlasangiz, barcha xonalarda bir xil, sinxron chaladi — birinchisi yetakchi bo'ladi."
         }
       }
     },
     "error": {
-      "same_entity": "Manba va chiqish har xil player bo'lishi kerak.",
+      "same_entity": "Manba chiqish kolonkalari ichida bo'lmasligi kerak.",
+      "no_outputs": "Kamida bitta Arylic kolonka tanlang.",
       "music_assistant_missing": "Music Assistant integratsiyasi topilmadi. Avval Music Assistant'ni o'rnatib sozlang."
     },
     "abort": {
-      "already_configured": "Bu Alice → Arylic juftligi allaqachon sozlangan."
+      "already_configured": "Bu Alice → Arylic kombinatsiyasi allaqachon sozlangan."
     }
   },
   "options": {

@@ -10,7 +10,7 @@ from homeassistant.const import Platform
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.event import async_track_entity_registry_updated_event
 
-from .const import CONF_ALICE_ENTITY, CONF_ARYLIC_ENTITY
+from .const import CONF_ALICE_ENTITY, CONF_ARYLIC_ENTITIES, CONF_ARYLIC_ENTITY
 from .controller import SyncController
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,8 +20,19 @@ PLATFORMS: list[Platform] = [Platform.SWITCH]
 type AliceArylicConfigEntry = ConfigEntry[SyncController]
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate v1 entries (single arylic_entity) to v2 (arylic_entities list)."""
+    if entry.version == 1:
+        data = {**entry.data}
+        if CONF_ARYLIC_ENTITY in data:
+            data[CONF_ARYLIC_ENTITIES] = [data.pop(CONF_ARYLIC_ENTITY)]
+        hass.config_entries.async_update_entry(entry, data=data, version=2)
+        _LOGGER.info("Migrated %s to config entry version 2 (multi-room)", entry.title)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: AliceArylicConfigEntry) -> bool:
-    """Set up one Alice -> Arylic pair from a config entry."""
+    """Set up one Alice -> Arylic(s) pair from a config entry."""
     controller = SyncController(hass, entry)
     entry.runtime_data = controller
 
@@ -29,7 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AliceArylicConfigEntry) 
     entry.async_on_unload(
         async_track_entity_registry_updated_event(
             hass,
-            [entry.data[CONF_ALICE_ENTITY], entry.data[CONF_ARYLIC_ENTITY]],
+            [entry.data[CONF_ALICE_ENTITY], *entry.data[CONF_ARYLIC_ENTITIES]],
             _make_registry_listener(hass, entry),
         )
     )
@@ -60,10 +71,13 @@ def _make_registry_listener(hass: HomeAssistant, entry: AliceArylicConfigEntry):
         if data["action"] != "update" or "old_entity_id" not in data:
             return
         old_id, new_id = data["old_entity_id"], data["entity_id"]
-        new_data = {
-            key: (new_id if value == old_id else value)
-            for key, value in entry.data.items()
-        }
+
+        def _replace(value):
+            if isinstance(value, list):
+                return [new_id if item == old_id else item for item in value]
+            return new_id if value == old_id else value
+
+        new_data = {key: _replace(value) for key, value in entry.data.items()}
         if new_data == dict(entry.data):
             return
         _LOGGER.info("Entity %s renamed to %s — updating the pair", old_id, new_id)
@@ -71,7 +85,9 @@ def _make_registry_listener(hass: HomeAssistant, entry: AliceArylicConfigEntry):
         hass.config_entries.async_update_entry(
             entry,
             data=new_data,
-            unique_id=f"{new_data[CONF_ALICE_ENTITY]}__{new_data[CONF_ARYLIC_ENTITY]}",
+            unique_id="__".join(
+                [new_data[CONF_ALICE_ENTITY], *sorted(new_data[CONF_ARYLIC_ENTITIES])]
+            ),
         )
 
     return _registry_updated

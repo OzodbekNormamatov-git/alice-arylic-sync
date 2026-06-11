@@ -51,7 +51,7 @@ class SyncEnabledSwitch(SwitchEntity, RestoreEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "alice_entity": self._controller.alice_entity,
-            "arylic_entity": self._controller.arylic_entity,
+            "arylic_entities": self._controller.arylic_entities,
             "last_run": self._controller.last_run,
         }
 

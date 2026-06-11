@@ -61,9 +61,10 @@ other integration) or the **Blueprints** (lighter, YAML automations).
 3. Find **Alice ↔ Arylic Sync** in HACS, **Download**, then restart Home Assistant.
 4. **Settings → Devices & Services → Add Integration** → search for
    "**Alice ↔ Arylic Sync**".
-5. Pick your two players: **Alice (Yandex Station)** as the source and the
-   **Music Assistant** entity of your Arylic as the output (the picker only
-   shows Music Assistant players, so you can't grab the wrong one).
+5. Pick your players: **Alice (Yandex Station)** as the source and **one or
+   more** Music Assistant entities as outputs (the picker only shows Music
+   Assistant players). Selecting several outputs enables **multi-room**: they
+   are auto-grouped and play the same track in sync.
 6. Done — it starts working immediately. **Every setting** (sync offset, start
    delay, steps, head-start, volumes, timeouts) lives behind the **Configure**
    button on the integration card.
@@ -104,6 +105,26 @@ Then create one automation from each blueprint (Use blueprint → pick your enti
 
 > If you use the blueprints, don't also install the integration (running both
 > would hand each track off twice).
+
+---
+
+## Multi-room (same music in every room)
+
+Two ways:
+
+**Option 1 — select several outputs in the integration (easiest).** When adding
+the integration, tick all your speakers in the **Arylic players** picker. On
+handoff they are auto-joined into a Music Assistant group (the first one is the
+leader) and play the same track in sync; volume steps go to all of them in a
+single call.
+
+**Option 2 — a permanent Music Assistant group.** In Music Assistant create a
+group player (**Settings → Players → Add group player**) and select that single
+group entity as the output.
+
+> ⚠️ Speakers must be groupable in Music Assistant (e.g. all AirPlay, or all in
+> the same LinkPlay family). For mixed types, create a Universal Group in MA
+> and use Option 2.
 
 ---
 

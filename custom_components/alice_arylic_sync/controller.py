@@ -1,6 +1,10 @@
-"""The sync engine: watches the Alice (Yandex Station) player and drives the
-Arylic (Music Assistant) player — smooth handoff on start, smooth stop/restore
-on stop.
+"""The sync engine: watches the Alice (Yandex Station) player and drives one or
+more Arylic (Music Assistant) players — smooth handoff on start, smooth
+stop/restore on stop.
+
+Multi-room: when several outputs are configured, they are joined into a Music
+Assistant group (leader = the first one) so every room plays the same track in
+perfect sync; volume steps go to all outputs in a single service call.
 
 Handoff and stop share ONE task slot: a new trigger in either direction cancels
 the run in progress. This deliberately goes beyond the blueprints' per-automation
@@ -25,7 +29,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_ALICE_ENTITY,
-    CONF_ARYLIC_ENTITY,
+    CONF_ARYLIC_ENTITIES,
     DEFAULTS,
     INVALID_CONTENT_IDS,
     OPT_ALICE_END_VOLUME,
@@ -62,13 +66,15 @@ def _safe_float(value: Any, default: float) -> float:
 
 
 class SyncController:
-    """Drives one Alice -> Arylic pair."""
+    """Drives one Alice -> Arylic(s) pair."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
         self.alice_entity: str = entry.data[CONF_ALICE_ENTITY]
-        self.arylic_entity: str = entry.data[CONF_ARYLIC_ENTITY]
+        self.arylic_entities: list[str] = list(entry.data[CONF_ARYLIC_ENTITIES])
+        # The leader receives play/seek; in a group the members follow it.
+        self.leader: str = self.arylic_entities[0]
         self.enabled: bool = True
         self.last_run: str | None = None
         self._unsub: Callable[[], None] | None = None
@@ -78,7 +84,7 @@ class SyncController:
 
     async def async_start(self) -> None:
         """Start listening to the Alice player."""
-        for entity_id in (self.alice_entity, self.arylic_entity):
+        for entity_id in (self.alice_entity, *self.arylic_entities):
             if self.hass.states.get(entity_id) is None:
                 _LOGGER.warning(
                     "Configured entity %s not found — the sync will not work "
@@ -147,14 +153,64 @@ class SyncController:
             await asyncio.sleep(POLL_INTERVAL)
         return False
 
-    async def _set_volume(self, entity_id: str, volume: float) -> None:
+    async def _set_volume(self, entity_ids: str | list[str], volume: float) -> None:
+        """One service call — multiple outputs change volume in the same step."""
         await self.hass.services.async_call(
             "media_player",
             "volume_set",
             {"volume_level": round(min(1.0, max(0.0, volume)), 3)},
-            target={"entity_id": entity_id},
+            target={"entity_id": entity_ids},
             blocking=True,
         )
+
+    async def _ensure_group(self) -> None:
+        """Join all outputs into one Music Assistant group (leader first).
+
+        Skipped when there is a single output or every member is already in
+        the leader's group. NOTE: the join service only raises for leader-side
+        problems (no grouping support, unknown entity) — members Music
+        Assistant cannot sync are skipped SILENTLY on the server side, so
+        after joining we poll group_members and warn about rooms left out."""
+        members = self.arylic_entities[1:]
+        if not members:
+            return
+        current = set(self._attr(self.leader, "group_members") or [])
+        if set(members) <= current:
+            return
+        try:
+            await self.hass.services.async_call(
+                "media_player",
+                "join",
+                {"group_members": members},
+                target={"entity_id": self.leader},
+                blocking=True,
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.warning(
+                "Could not group %s with %s (the leader rejected the join) — "
+                "continuing with the leader only",
+                members,
+                self.leader,
+            )
+            return
+        # Grouping lands asynchronously (protocol sync can take seconds).
+        joined = await self._wait_for(
+            lambda: set(members)
+            <= set(self._attr(self.leader, "group_members") or []),
+            5.0,
+        )
+        if not joined:
+            grouped = set(self._attr(self.leader, "group_members") or [])
+            missing = [e for e in members if e not in grouped]
+            _LOGGER.warning(
+                "Output(s) %s could not be grouped with %s — Music Assistant "
+                "skipped them (provider cannot sync with the leader, or the "
+                "player is unavailable); those rooms will stay silent. Tip: "
+                "create a Universal Group in Music Assistant and select it as "
+                "the single output instead",
+                missing,
+                self.leader,
+            )
 
     # ---------- triggers ----------
 
@@ -188,16 +244,16 @@ class SyncController:
         return old.attributes.get("media_content_id") != content_id
 
     def _is_stop_trigger(self, old: State | None, new: State) -> bool:
-        """MUSIC stopped on Alice while Arylic is playing (echoes the blueprint
-        conditions: don't react to voice answers/news/alarms ending, and don't
-        touch Arylic if it isn't playing)."""
+        """MUSIC stopped on Alice while any output is playing (echoes the
+        blueprint conditions: don't react to voice answers/news/alarms ending,
+        and don't touch the outputs if none of them is playing)."""
         if old is None or old.state != "playing":
             return False
         if new.state not in STOP_STATES:
             return False
         if old.attributes.get("media_content_type") != "music":
             return False
-        return self._state(self.arylic_entity) == "playing"
+        return any(self._state(e) == "playing" for e in self.arylic_entities)
 
     # ---------- handoff (start) ----------
 
@@ -229,8 +285,12 @@ class SyncController:
         gap = int(self._opt(OPT_ALICE_GAP_MS)) / 1000
         alice_start_volume = _safe_float(alice.attributes.get("volume_level"), 0.5)
 
-        # 1) Arylic to floor volume, start the same track via Music Assistant.
-        await self._set_volume(self.arylic_entity, floor)
+        # 0) Multi-room: make sure all outputs are in one synced group.
+        await self._ensure_group()
+
+        # 1) All outputs to floor volume, start the same track via Music
+        #    Assistant on the leader (the group follows it).
+        await self._set_volume(self.arylic_entities, floor)
         await self.hass.services.async_call(
             "music_assistant",
             "play_media",
@@ -238,50 +298,52 @@ class SyncController:
                 "media_id": f"{self._opt(OPT_TRACK_URI_PREFIX)}{content_id}",
                 "media_type": str(self._opt(OPT_MEDIA_TYPE)),
             },
-            target={"entity_id": self.arylic_entity},
+            target={"entity_id": self.leader},
             blocking=True,
         )
 
-        # 2) Wait until Arylic reports playing.
+        # 2) Wait until the leader reports playing.
         await self._wait_for(
-            lambda: self._state(self.arylic_entity) == "playing",
+            lambda: self._state(self.leader) == "playing",
             float(self._opt(OPT_PLAY_WAIT_TIMEOUT)),
         )
 
-        # 3) Seek Arylic to Alice's current second (+ sync offset, clamped >= 0).
-        pos_updated_before = self._attr(self.arylic_entity, "media_position_updated_at")
+        # 3) Seek the leader to Alice's current second (+ offset, clamped >= 0);
+        #    grouped members follow the leader's position.
+        pos_updated_before = self._attr(self.leader, "media_position_updated_at")
         seek_target = self._compute_seek_target()
         try:
             await self.hass.services.async_call(
                 "media_player",
                 "media_seek",
                 {"seek_position": seek_target},
-                target={"entity_id": self.arylic_entity},
+                target={"entity_id": self.leader},
                 blocking=True,
             )
         except Exception:  # noqa: BLE001 - some players reject seek; carry on unsynced
-            _LOGGER.debug("media_seek failed on %s, continuing", self.arylic_entity)
+            _LOGGER.debug("media_seek failed on %s, continuing", self.leader)
 
-        # 4) Wait until the player pushes a post-seek position update (it accepted
-        #    the new position). Some integrations skip updates for small jumps —
-        #    then the timeout applies. The short sleep covers re-buffering.
+        # 4) Wait until the leader pushes a post-seek position update (it
+        #    accepted the new position). Some integrations skip updates for
+        #    small jumps — then the timeout applies. The short sleep covers
+        #    re-buffering.
         await self._wait_for(
             lambda: (
-                self._state(self.arylic_entity) == "playing"
-                and self._attr(self.arylic_entity, "media_position_updated_at")
+                self._state(self.leader) == "playing"
+                and self._attr(self.leader, "media_position_updated_at")
                 != pos_updated_before
-                and float(self._attr(self.arylic_entity, "media_position") or 0)
+                and float(self._attr(self.leader, "media_position") or 0)
                 >= seek_target - 2
             ),
             float(self._opt(OPT_BUFFER_WAIT_TIMEOUT)),
         )
         await asyncio.sleep(0.4)
 
-        # 5) Stepped crossfade, Arylic leading: each step Arylic up first,
-        #    head-start pause, then Alice down.
+        # 5) Stepped crossfade, outputs leading: each step every output goes up
+        #    together (one service call), head-start pause, then Alice down.
         for i in range(1, steps + 1):
             arylic_vol = min(target, floor + (target - floor) / steps * i)
-            await self._set_volume(self.arylic_entity, arylic_vol)
+            await self._set_volume(self.arylic_entities, arylic_vol)
             await asyncio.sleep(headstart)
             alice_vol = max(end_volume, alice_start_volume - (alice_start_volume - end_volume) / steps * i)
             await self._set_volume(self.alice_entity, alice_vol)
@@ -304,22 +366,50 @@ class SyncController:
         fade_floor = float(self._opt(OPT_STOP_FADE_FLOOR))
         steps = max(1, int(self._opt(OPT_STOP_STEPS)))
         step_delay = int(self._opt(OPT_STOP_STEP_DELAY_MS)) / 1000
-        start_volume = _safe_float(self._attr(self.arylic_entity, "volume_level"), 0.35)
+        # Each room keeps its OWN volume in an MA group — fade every output
+        # along its own curve, so a room the user turned down never jumps up.
+        start_volumes = {
+            entity_id: _safe_float(self._attr(entity_id, "volume_level"), 0.35)
+            for entity_id in self.arylic_entities
+        }
 
-        # 1) Fade Arylic down to the floor.
-        for i in range(1, steps + 1):
-            vol = max(fade_floor, start_volume - (start_volume - fade_floor) / steps * i)
-            await self._set_volume(self.arylic_entity, vol)
-            await asyncio.sleep(step_delay)
+        try:
+            # 1) Fade all outputs down to the floor together (per-entity curve,
+            #    concurrent within each step so the rooms stay in lockstep).
+            for i in range(1, steps + 1):
+                await asyncio.gather(
+                    *(
+                        self._set_volume(
+                            entity_id,
+                            max(fade_floor, start - (start - fade_floor) / steps * i),
+                        )
+                        for entity_id, start in start_volumes.items()
+                    )
+                )
+                await asyncio.sleep(step_delay)
 
-        # 2) Pause Arylic.
-        await self.hass.services.async_call(
-            "media_player",
-            "media_pause",
-            {},
-            target={"entity_id": self.arylic_entity},
-            blocking=True,
-        )
+            # 2) Pause: the leader's pause covers the whole MA group; outputs
+            #    that never joined the group get their own pause. One failing
+            #    player must not stop the rest.
+            grouped = set(self._attr(self.leader, "group_members") or [])
+            to_pause = [self.leader] + [
+                e for e in self.arylic_entities[1:] if e not in grouped
+            ]
+            for entity_id in to_pause:
+                try:
+                    await self.hass.services.async_call(
+                        "media_player",
+                        "media_pause",
+                        {},
+                        target={"entity_id": entity_id},
+                        blocking=True,
+                    )
+                except Exception:  # noqa: BLE001
+                    _LOGGER.warning("media_pause failed on %s, continuing", entity_id)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _LOGGER.exception("Stop fade failed — restoring Alice volume anyway")
 
-        # 3) Restore Alice's volume.
+        # 3) Restore Alice's volume (always reached unless cancelled).
         await self._set_volume(self.alice_entity, float(self._opt(OPT_ALICE_RESTORE_VOLUME)))
