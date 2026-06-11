@@ -3,65 +3,65 @@
     "step": {
       "user": {
         "title": "Alice ↔ Arylic Sync",
-        "description": "Pick the source (Yandex Station / Alice) and the output (Arylic in Music Assistant). All timing and volume settings can be changed later via Configure.",
+        "description": "Manba (Yandex Station / Alice) va chiqish (Music Assistant'dagi Arylic) kolonkalarini tanlang. Barcha vaqt va ovoz sozlamalarini keyinroq «Sozlash» (Configure) orqali o'zgartirishingiz mumkin.",
         "data": {
-          "alice_entity": "Alice (Yandex Station) — source",
-          "arylic_entity": "Arylic (Music Assistant) — output"
+          "alice_entity": "Alice (Yandex Station) — manba",
+          "arylic_entity": "Arylic (Music Assistant) — chiqish"
         },
         "data_description": {
-          "alice_entity": "The media player where music starts and is voice-controlled.",
-          "arylic_entity": "The Music Assistant player entity of your Arylic speaker (not the raw LinkPlay entity)."
+          "alice_entity": "Musiqa shu yerda boshlanadi va ovoz bilan boshqariladigan media player.",
+          "arylic_entity": "Arylic kolonkangizning Music Assistant'dagi entity'si (xom LinkPlay entity emas)."
         }
       }
     },
     "error": {
-      "same_entity": "Source and output must be different players.",
-      "music_assistant_missing": "Music Assistant integration was not found. Install and configure Music Assistant first."
+      "same_entity": "Manba va chiqish har xil player bo'lishi kerak.",
+      "music_assistant_missing": "Music Assistant integratsiyasi topilmadi. Avval Music Assistant'ni o'rnatib sozlang."
     },
     "abort": {
-      "already_configured": "This Alice → Arylic pair is already configured."
+      "already_configured": "Bu Alice → Arylic juftligi allaqachon sozlangan."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Sync settings",
-        "description": "Crossfade timing and volumes. The two knobs that matter most: 'Sync offset' (if Arylic plays behind Alice, increase it) and 'Arylic head-start' (if the volume jumps instead of stepping, increase it).",
+        "title": "Sinxron sozlamalari",
+        "description": "Crossfade vaqti va ovozlar. Eng muhim ikki tugma: «Sinxron offset» (Arylic Alice'dan orqada qolsa — oshiring) va «Arylic head-start» (ovoz pog'onalab emas, sakrab chiqsa — oshiring).",
         "data": {
-          "sync_offset": "Sync offset (seconds)",
-          "handoff_delay": "Start delay (seconds)",
-          "steps": "Crossfade steps",
+          "sync_offset": "Sinxron offset (soniya)",
+          "handoff_delay": "Boshlash kechikishi (soniya)",
+          "steps": "Crossfade qadamlari",
           "arylic_headstart_ms": "Arylic head-start (ms)",
-          "alice_gap_ms": "Alice gap (ms)",
-          "arylic_floor": "Arylic starting volume",
-          "arylic_target": "Arylic final volume",
-          "alice_end_volume": "Alice final volume",
-          "stop_fade_floor": "Stop: Arylic fade-down floor",
-          "alice_restore_volume": "Stop: Alice restore volume",
-          "stop_steps": "Stop: fade steps",
-          "stop_step_delay_ms": "Stop: delay between steps (ms)",
-          "play_wait_timeout": "Timeout: wait for Arylic to play (s)",
-          "buffer_wait_timeout": "Timeout: wait after seek (s)",
-          "track_uri_prefix": "Track URI prefix",
-          "media_type": "Media type"
+          "alice_gap_ms": "Alice pauzasi (ms)",
+          "arylic_floor": "Arylic boshlang'ich ovozi",
+          "arylic_target": "Arylic yakuniy ovozi",
+          "alice_end_volume": "Alice yakuniy ovozi",
+          "stop_fade_floor": "To'xtash: Arylic pasayish chegarasi",
+          "alice_restore_volume": "To'xtash: Alice qaytariladigan ovoz",
+          "stop_steps": "To'xtash: pasayish qadamlari",
+          "stop_step_delay_ms": "To'xtash: qadamlar orasidagi kutish (ms)",
+          "play_wait_timeout": "Timeout: Arylic ijrosini kutish (s)",
+          "buffer_wait_timeout": "Timeout: seekdan keyin kutish (s)",
+          "track_uri_prefix": "Trek URI prefiksi",
+          "media_type": "Media turi"
         },
         "data_description": {
-          "sync_offset": "Correction so Arylic plays the same second as Alice. Arylic behind → increase; Arylic ahead → decrease.",
-          "handoff_delay": "Wait this long after music starts on Alice before handing off (0 = immediately).",
-          "steps": "How many steps the crossfade takes. More = smoother but slower.",
-          "arylic_headstart_ms": "Each step: how long Arylic leads before Alice steps down. Covers Arylic's command latency.",
-          "alice_gap_ms": "Pause after Alice steps down before the next step.",
-          "arylic_floor": "Arylic starts rising from this volume.",
-          "arylic_target": "Arylic ends the crossfade at this volume.",
-          "alice_end_volume": "Alice ends the crossfade at this volume (0 = silent; use 0.01 if your Station pauses at 0).",
-          "stop_fade_floor": "When music stops, Arylic fades down to this volume before pausing.",
-          "alice_restore_volume": "After the stop, Alice's volume is restored to this level.",
-          "stop_steps": "How many steps the stop fade takes.",
-          "stop_step_delay_ms": "Delay between stop-fade steps.",
-          "play_wait_timeout": "How long to wait for Arylic to report 'playing' before continuing.",
-          "buffer_wait_timeout": "How long to wait for the player to accept the new position after seeking.",
-          "track_uri_prefix": "Prepended to Alice's media_content_id. 'yandex_music://track/' for Yandex Music; change for another Music Assistant provider.",
-          "media_type": "Media type passed to music_assistant.play_media (usually 'track')."
+          "sync_offset": "Arylic Alice bilan bir xil sekunddan chiqishi uchun tuzatish. Arylic orqada bo'lsa — oshiring; oldinda bo'lsa — kamaytiring.",
+          "handoff_delay": "Alice'da musiqa boshlangach, uzatishdan oldin shuncha kutadi (0 = darhol).",
+          "steps": "Crossfade necha qadamda bajariladi. Ko'p = silliqroq, lekin sekinroq.",
+          "arylic_headstart_ms": "Har qadamda Arylic ko'tarilgach, Alice tushishidan oldingi pauza. Arylic'ning buyruq kechikishini yopadi.",
+          "alice_gap_ms": "Alice tushgandan keyin keyingi qadamgacha kutish.",
+          "arylic_floor": "Arylic shu ovozdan boshlab ko'tariladi.",
+          "arylic_target": "Crossfade oxirida Arylic shu ovozga chiqadi.",
+          "alice_end_volume": "Crossfade oxirida Alice shu ovozga tushadi (0 = jim; agar Station 0 da pauza qilsa, 0.01 qiling).",
+          "stop_fade_floor": "Musiqa to'xtaganda Arylic pauzadan oldin shu ovozgacha pasayadi.",
+          "alice_restore_volume": "To'xtagandan keyin Alice ovozi shu darajaga qaytadi.",
+          "stop_steps": "To'xtash pasayishi necha qadamda bajariladi.",
+          "stop_step_delay_ms": "To'xtash pasayish qadamlari orasidagi kutish.",
+          "play_wait_timeout": "Davom etishdan oldin Arylic 'playing' holatiga o'tishini shuncha kutamiz.",
+          "buffer_wait_timeout": "Seekdan keyin player yangi pozitsiyani qabul qilishini shuncha kutamiz.",
+          "track_uri_prefix": "Alice'ning media_content_id qiymati oldiga qo'shiladi. Yandex Music uchun 'yandex_music://track/'; boshqa Music Assistant provayderi uchun o'zgartiring.",
+          "media_type": "music_assistant.play_media uchun media turi (odatda 'track')."
         }
       }
     }
@@ -69,7 +69,7 @@
   "entity": {
     "switch": {
       "sync_enabled": {
-        "name": "Sync"
+        "name": "Sinxron"
       }
     }
   }

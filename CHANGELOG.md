@@ -23,6 +23,9 @@ Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 - Minimal Home Assistant: integratsiya uchun **2024.12**, blueprintlar uchun
   2024.10 (o'zgarmagan).
 - README: integratsiya asosiy o'rnatish usuli, blueprintlar muqobil.
+- Integratsiya UI'si (config flow + Configure oynasi) **to'liq o'zbek tilida**.
+  HA qaysi tilda bo'lishidan qat'i nazar o'zbekcha ko'rinadi (`en` fallback
+  ham o'zbekcha).
 
 ## [1.0.0] - 2026-06-11
 
