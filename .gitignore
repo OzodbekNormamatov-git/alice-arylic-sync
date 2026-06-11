@@ -7,6 +7,10 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Python
+__pycache__/
+*.pyc
+
 # HA
 *.log
 secrets.yaml

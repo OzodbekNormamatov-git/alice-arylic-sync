@@ -5,8 +5,9 @@
 > starting at the *exact same second*, with a smooth crossfade — and gracefully
 > bring it back when playback stops.
 
-![type](https://img.shields.io/badge/type-Blueprints-blue)
-![ha](https://img.shields.io/badge/Home%20Assistant-2024.10%2B-41BDF5)
+[![hacs_badge](https://img.shields.io/badge/HACS-Integration-41BDF5.svg)](https://hacs.xyz/)
+![type](https://img.shields.io/badge/type-Integration%20%2B%20Blueprints-blue)
+![ha](https://img.shields.io/badge/Home%20Assistant-2024.12%2B-41BDF5)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 🇺🇿 O'zbekcha: [`README.md`](README.md)
@@ -39,7 +40,7 @@ play at once and you get an echo.
 
 ## Requirements
 
-1. Home Assistant **2024.10+** (for the modern `triggers:`/`actions:` automation syntax).
+1. Home Assistant **2024.12+** (for the integration; the blueprints only need 2024.10).
 2. **[Music Assistant](https://music-assistant.io/)** integration installed.
 3. Arylic / LinkPlay added to Music Assistant as a player.
 4. Yandex Station connected to HA (e.g. [AlexxIT/YandexStation](https://github.com/AlexxIT/YandexStation)), exposing `media_content_id` and `media_position`.
@@ -49,7 +50,33 @@ play at once and you get an echo.
 
 ## Install
 
-### Option A — Import buttons (easiest)
+Two ways: the **Integration** (recommended — everything in the UI, like any
+other integration) or the **Blueprints** (lighter, YAML automations).
+
+### Option 1 — Integration (via HACS, recommended) ⭐
+
+1. **HACS → ⋮ (top right) → Custom repositories**.
+2. **Repository:** `https://github.com/OzodbekNormamatov-git/alice-arylic-sync`
+   · **Type:** `Integration` → **Add**.
+3. Find **Alice ↔ Arylic Sync** in HACS, **Download**, then restart Home Assistant.
+4. **Settings → Devices & Services → Add Integration** → search for
+   "**Alice ↔ Arylic Sync**".
+5. Pick your two players: **Alice (Yandex Station)** as the source and the
+   **Music Assistant** entity of your Arylic as the output (the picker only
+   shows Music Assistant players, so you can't grab the wrong one).
+6. Done — it starts working immediately. **Every setting** (sync offset, start
+   delay, steps, head-start, volumes, timeouts) lives behind the **Configure**
+   button on the integration card.
+
+> Without HACS: copy `custom_components/alice_arylic_sync/` into
+> `config/custom_components/` and restart Home Assistant.
+
+> 💡 The integration also creates a **Sync** switch per pair so you can
+> temporarily disable the handoff.
+
+### Option 2 — Blueprints (YAML automations)
+
+#### Import buttons
 
 | Blueprint | Import |
 |---|---|
@@ -63,16 +90,20 @@ https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/
 https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
 ```
 
-> ℹ️ HACS does not distribute blueprints (it has no such category) — use Home
-> Assistant's native blueprint import instead.
+> ℹ️ Note: HACS has no blueprint category — blueprints install via HA's native
+> **Import Blueprint** (buttons above). What HACS installs is the
+> **integration** from Option 1.
 
-### Option B — Manual copy
+#### Manual copy
 
 Copy both `.yaml` files from `blueprints/automation/alice_arylic/` into
 `config/blueprints/automation/alice_arylic/` in your HA configuration and
 restart Home Assistant.
 
 Then create one automation from each blueprint (Use blueprint → pick your entities).
+
+> If you use the blueprints, don't also install the integration (running both
+> would hand each track off twice).
 
 ---
 

@@ -1,0 +1,14 @@
+{
+  "domain": "alice_arylic_sync",
+  "name": "Alice ↔ Arylic Sync",
+  "after_dependencies": ["music_assistant"],
+  "codeowners": ["@OzodbekNormamatov-git"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/OzodbekNormamatov-git/alice-arylic-sync",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/OzodbekNormamatov-git/alice-arylic-sync/issues",
+  "requirements": [],
+  "version": "1.1.0"
+}

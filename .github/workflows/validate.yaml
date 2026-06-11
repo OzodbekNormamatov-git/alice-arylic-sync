@@ -30,3 +30,24 @@ jobs:
 
       - name: Blueprint schema check
         run: python .github/scripts/check_blueprints.py
+
+  hassfest:
+    name: Hassfest (integration)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS validation (integration)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: HACS Action
+        uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands

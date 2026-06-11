@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Alice ↔ Arylic Sync",
+        "description": "Pick the source (Yandex Station / Alice) and the output (Arylic in Music Assistant). All timing and volume settings can be changed later via Configure.",
+        "data": {
+          "alice_entity": "Alice (Yandex Station) — source",
+          "arylic_entity": "Arylic (Music Assistant) — output"
+        },
+        "data_description": {
+          "alice_entity": "The media player where music starts and is voice-controlled.",
+          "arylic_entity": "The Music Assistant player entity of your Arylic speaker (not the raw LinkPlay entity)."
+        }
+      }
+    },
+    "error": {
+      "same_entity": "Source and output must be different players.",
+      "music_assistant_missing": "Music Assistant integration was not found. Install and configure Music Assistant first."
+    },
+    "abort": {
+      "already_configured": "This Alice → Arylic pair is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sync settings",
+        "description": "Crossfade timing and volumes. The two knobs that matter most: 'Sync offset' (if Arylic plays behind Alice, increase it) and 'Arylic head-start' (if the volume jumps instead of stepping, increase it).",
+        "data": {
+          "sync_offset": "Sync offset (seconds)",
+          "handoff_delay": "Start delay (seconds)",
+          "steps": "Crossfade steps",
+          "arylic_headstart_ms": "Arylic head-start (ms)",
+          "alice_gap_ms": "Alice gap (ms)",
+          "arylic_floor": "Arylic starting volume",
+          "arylic_target": "Arylic final volume",
+          "alice_end_volume": "Alice final volume",
+          "stop_fade_floor": "Stop: Arylic fade-down floor",
+          "alice_restore_volume": "Stop: Alice restore volume",
+          "stop_steps": "Stop: fade steps",
+          "stop_step_delay_ms": "Stop: delay between steps (ms)",
+          "play_wait_timeout": "Timeout: wait for Arylic to play (s)",
+          "buffer_wait_timeout": "Timeout: wait after seek (s)",
+          "track_uri_prefix": "Track URI prefix",
+          "media_type": "Media type"
+        },
+        "data_description": {
+          "sync_offset": "Correction so Arylic plays the same second as Alice. Arylic behind → increase; Arylic ahead → decrease.",
+          "handoff_delay": "Wait this long after music starts on Alice before handing off (0 = immediately).",
+          "steps": "How many steps the crossfade takes. More = smoother but slower.",
+          "arylic_headstart_ms": "Each step: how long Arylic leads before Alice steps down. Covers Arylic's command latency.",
+          "alice_gap_ms": "Pause after Alice steps down before the next step.",
+          "arylic_floor": "Arylic starts rising from this volume.",
+          "arylic_target": "Arylic ends the crossfade at this volume.",
+          "alice_end_volume": "Alice ends the crossfade at this volume (0 = silent; use 0.01 if your Station pauses at 0).",
+          "stop_fade_floor": "When music stops, Arylic fades down to this volume before pausing.",
+          "alice_restore_volume": "After the stop, Alice's volume is restored to this level.",
+          "stop_steps": "How many steps the stop fade takes.",
+          "stop_step_delay_ms": "Delay between stop-fade steps.",
+          "play_wait_timeout": "How long to wait for Arylic to report 'playing' before continuing.",
+          "buffer_wait_timeout": "How long to wait for the player to accept the new position after seeking.",
+          "track_uri_prefix": "Prepended to Alice's media_content_id. 'yandex_music://track/' for Yandex Music; change for another Music Assistant provider.",
+          "media_type": "Media type passed to music_assistant.play_media (usually 'track')."
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "sync_enabled": {
+        "name": "Sync"
+      }
+    }
+  }
+}

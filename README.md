@@ -5,8 +5,9 @@
 > uzatadigan va to'xtaganda yana yumshoq qaytaradigan Home Assistant blueprint
 > to'plami.
 
-![type](https://img.shields.io/badge/type-Blueprints-blue)
-![ha](https://img.shields.io/badge/Home%20Assistant-2024.10%2B-41BDF5)
+[![hacs_badge](https://img.shields.io/badge/HACS-Integration-41BDF5.svg)](https://hacs.xyz/)
+![type](https://img.shields.io/badge/type-Integration%20%2B%20Blueprints-blue)
+![ha](https://img.shields.io/badge/Home%20Assistant-2024.12%2B-41BDF5)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -46,8 +47,7 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 
 ## ✅ Talablar (Requirements)
 
-1. **Home Assistant** 2024.10 yoki undan yangi (zamonaviy `triggers:`/`actions:`
-   avtomatika sintaksisi uchun).
+1. **Home Assistant** 2024.12+ (integratsiya uchun; blueprintlarga 2024.10 yetadi).
 2. **[Music Assistant](https://music-assistant.io/)** integratsiyasi o'rnatilgan.
 3. **Arylic / LinkPlay** speaker Music Assistant'ga player sifatida qo'shilgan.
 4. **Yandex Station** Home Assistant'ga ulangan (mas.
@@ -61,7 +61,35 @@ Bu yerda **ikki xil "kolonka"** bor va ularni adashtirmaslik muhim:
 
 ## 🚀 O'rnatish
 
-### A-variant — Import tugmasi bilan (eng oson)
+Ikki usul bor: **Integratsiya** (tavsiya etiladi — hammasi UI'da, xuddi boshqa
+integratsiyalar kabi) yoki **Blueprint** (yengilroq, YAML avtomatika).
+
+### 1-usul — Integratsiya (HACS orqali, tavsiya etiladi) ⭐
+
+1. **HACS → ⋮ (yuqori o'ng) → Custom repositories** ni oching.
+2. **Repository:** `https://github.com/OzodbekNormamatov-git/alice-arylic-sync`
+   · **Type:** `Integration` → **Add**.
+3. HACS ro'yxatidan **Alice ↔ Arylic Sync** ni topib **Download** qiling,
+   so'ng Home Assistant'ni qayta ishga tushiring.
+4. **Settings → Devices & Services → Add Integration** → qidiruvga
+   "**Alice ↔ Arylic Sync**" deb yozing.
+5. Ochilgan oynada ikkita kolonkani tanlang:
+   - **Alice (Yandex Station)** — manba;
+   - **Arylic (Music Assistant)** — chiqish (ro'yxatda faqat Music Assistant
+     player'lari ko'rinadi, adashib bo'lmaydi).
+6. Tamom — shu zahoti ishlay boshlaydi. **Barcha sozlamalar** (sync offset,
+   boshlash kechikishi, qadamlar, head-start, ovoz darajalari, timeoutlar)
+   integratsiya kartasidagi **Configure** tugmasida.
+
+> HACS'siz qo'lda: `custom_components/alice_arylic_sync/` papkasini HA'dagi
+> `config/custom_components/` ichiga nusxalang va HA'ni qayta ishga tushiring.
+
+> 💡 Integratsiya har bir juftlik uchun **Sync** nomli switch ham yaratadi —
+> sinxronlashni vaqtincha o'chirib qo'yish uchun (mehmonlar kelganda foydali).
+
+### 2-usul — Blueprint (YAML avtomatika)
+
+#### Import tugmasi bilan
 
 Quyidagi tugmani bossangiz, o'z Home Assistant'ingizda tayyor import oynasi ochiladi:
 
@@ -82,22 +110,25 @@ va quyidagi URL'larni navbatma-navbat qo'ying:
    https://github.com/OzodbekNormamatov-git/alice-arylic-sync/blob/main/blueprints/automation/alice_arylic/alice_arylic_smooth_stop.yaml
    ```
 
-> ℹ️ HACS blueprint'larni tarqatishni qo'llab-quvvatlamaydi (unda bunday
-> kategoriya yo'q) — shuning uchun bu repo HA'ning o'z **Import Blueprint**
-> mexanizmi bilan o'rnatiladi.
+> ℹ️ Eslatma: HACS'da blueprint kategoriyasi yo'q — blueprintlar HA'ning o'z
+> **Import Blueprint** mexanizmi bilan o'rnatiladi (yuqoridagi tugmalar).
+> HACS orqali esa 1-usuldagi **integratsiya** o'rnatiladi.
 
-### B-variant — Qo'lda nusxalash
+#### Qo'lda nusxalash
 
 `blueprints/automation/alice_arylic/` dagi ikkala `.yaml` faylni HA
 konfiguratsiyangizdagi `config/blueprints/automation/alice_arylic/` papkasiga
 nusxalang va Home Assistant'ni qayta ishga tushiring.
 
-### Avtomatika yaratish (ikkala variantdan keyin ham)
+#### Blueprintdan avtomatika yaratish
 
 1. **Settings → Automations & Scenes → Create Automation → Use blueprint**.
 2. **Smooth Handoff (Start)** ni tanlang → Alice va Arylic entity'larini belgilang →
    ovoz va timing sozlamalarini xohlovingizga moslang → **Save**.
 3. Xuddi shunday **Smooth Stop & Restore** uchun ham bitta avtomatika yarating.
+
+> Blueprint ishlatsangiz, integratsiyani o'rnatmang (ikkalasi birga ishlasa,
+> har bir trek IKKI marta uzatiladi).
 
 ---
 
@@ -181,14 +212,20 @@ To'liq ro'yxat: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 
 ```
 alice-arylic-sync/
-├── blueprints/automation/alice_arylic/
-│   ├── alice_arylic_handoff_start.yaml     # Start (crossfade handoff)
-│   └── alice_arylic_smooth_stop.yaml       # Stop (fade + restore)
+├── custom_components/alice_arylic_sync/    # ⭐ Integratsiya (HACS: Integration)
+│   ├── __init__.py / controller.py         #    sinxron dvigateli
+│   ├── config_flow.py                      #    UI: kolonka tanlash + sozlamalar
+│   ├── switch.py                           #    Sync on/off switch
+│   └── manifest.json / strings.json / translations/
+├── blueprints/automation/alice_arylic/     # Muqobil: blueprint variant
+│   ├── alice_arylic_handoff_start.yaml     #    Start (crossfade handoff)
+│   └── alice_arylic_smooth_stop.yaml       #    Stop (fade + restore)
 ├── examples/                               # namuna (to'ldiriladigan) avtomatikalar
 ├── docs/
 │   ├── TUNING.md
 │   └── TROUBLESHOOTING.md
-├── .github/workflows/validate.yaml         # CI: yamllint + blueprint tekshiruvi
+├── .github/workflows/validate.yaml         # CI: yamllint + hassfest + HACS
+├── hacs.json
 ├── README.md  /  README.en.md
 ├── CHANGELOG.md
 └── LICENSE
