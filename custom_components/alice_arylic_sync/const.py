@@ -26,6 +26,7 @@ OPT_STOP_STEP_DELAY_MS = "stop_step_delay_ms"
 # Multi-room robustness levers (v1.3.0).
 OPT_REGROUP_EACH_TRACK = "regroup_each_track"  # force re-join on every handoff
 OPT_SEEK_EACH_OUTPUT = "seek_each_output"  # seek every output, not just the leader
+OPT_REDIRECT_VOLUME = "redirect_volume"  # Alice "louder/quieter" -> outputs when handed off
 
 DEFAULTS: dict[str, float | int | str | bool] = {
     OPT_SYNC_OFFSET: 5.0,
@@ -46,6 +47,7 @@ DEFAULTS: dict[str, float | int | str | bool] = {
     OPT_STOP_STEP_DELAY_MS: 200,
     OPT_REGROUP_EACH_TRACK: False,
     OPT_SEEK_EACH_OUTPUT: False,
+    OPT_REDIRECT_VOLUME: True,
 }
 
 INVALID_CONTENT_IDS = (None, "", "unknown", "unavailable")

@@ -3,6 +3,17 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.4.0] - 2026-06-18
+
+### Qo'shildi
+- **Ovoz buyrug'ini yo'naltirish:** handoff bo'lgandan keyin (Alice jim,
+  Arylic'lar chalayotganda) Alice'ga **"ovozni balandlat / pasaytir"** desangiz,
+  o'zgarish endi **Alice'ga emas, Arylic kolonkalarга** qo'llanadi — Alice jim
+  qoladi. Alice ovozidagi o'zgarish miqdori (delta) barcha chiqishlarга
+  qo'shiladi/ayiriladi. Faqat *Alice yakuniy ovozi* past (≤0.15) bo'lganda, ya'ni
+  handoff-rejimida ishlaydi. Yangi **«Alice ovoz buyrug'ini kolonkalarga
+  yo'naltirish»** sozlamasi bilan o'chirib qo'yish mumkin (standart: yoqilgan).
+
 ## [1.3.0] - 2026-06-18
 
 ### Tuzatildi

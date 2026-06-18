@@ -26,6 +26,7 @@ from .const import (
     OPT_HEADSTART_MS,
     OPT_MEDIA_TYPE,
     OPT_PLAY_WAIT_TIMEOUT,
+    OPT_REDIRECT_VOLUME,
     OPT_REGROUP_EACH_TRACK,
     OPT_SEEK_EACH_OUTPUT,
     OPT_STEPS,
@@ -171,6 +172,10 @@ class AliceArylicSyncOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     OPT_SEEK_EACH_OUTPUT,
                     default=current[OPT_SEEK_EACH_OUTPUT],
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    OPT_REDIRECT_VOLUME,
+                    default=current[OPT_REDIRECT_VOLUME],
                 ): selector.BooleanSelector(),
                 vol.Required(
                     OPT_TRACK_URI_PREFIX, default=current[OPT_TRACK_URI_PREFIX]

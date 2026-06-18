@@ -42,6 +42,7 @@ from .const import (
     OPT_HEADSTART_MS,
     OPT_MEDIA_TYPE,
     OPT_PLAY_WAIT_TIMEOUT,
+    OPT_REDIRECT_VOLUME,
     OPT_REGROUP_EACH_TRACK,
     OPT_SEEK_EACH_OUTPUT,
     OPT_STEPS,
@@ -81,6 +82,11 @@ class SyncController:
         self.last_run: str | None = None
         self._unsub: Callable[[], None] | None = None
         self._task: asyncio.Task | None = None
+        self._vol_task: asyncio.Task | None = None
+        # The last volume WE wrote to Alice, to tell our crossfade writes apart
+        # from a user's spoken "louder/quieter".
+        self._alice_volume_we_set: float | None = None
+        self._last_redirect: float = 0.0
 
     # ---------- lifecycle ----------
 
@@ -108,6 +114,9 @@ class SyncController:
         if self._task is not None and not self._task.done():
             self._task.cancel()
         self._task = None
+        if self._vol_task is not None and not self._vol_task.done():
+            self._vol_task.cancel()
+        self._vol_task = None
 
     @callback
     def async_cancel(self) -> None:
@@ -157,13 +166,18 @@ class SyncController:
 
     async def _set_volume(self, entity_ids: str | list[str], volume: float) -> None:
         """One service call — multiple outputs change volume in the same step."""
+        level = round(min(1.0, max(0.0, volume)), 3)
         await self.hass.services.async_call(
             "media_player",
             "volume_set",
-            {"volume_level": round(min(1.0, max(0.0, volume)), 3)},
+            {"volume_level": level},
             target={"entity_id": entity_ids},
             blocking=True,
         )
+        # Remember the volume WE set on Alice so the redirect handler can tell a
+        # user's "louder/quieter" apart from our own crossfade writes.
+        if entity_ids == self.alice_entity:
+            self._alice_volume_we_set = level
 
     async def _ensure_group(self, force: bool = False) -> None:
         """Join all outputs into one Music Assistant group (leader first).
@@ -225,6 +239,15 @@ class SyncController:
         if new is None or new.state in ("unknown", "unavailable"):
             return
 
+        if self._is_volume_redirect(old, new):
+            _LOGGER.debug(
+                "Volume redirect: alice %s -> %s",
+                old.attributes.get("volume_level") if old else None,
+                new.attributes.get("volume_level"),
+            )
+            self._schedule_volume(old, new)
+            return
+
         if self._is_handoff_trigger(old, new):
             _LOGGER.debug("Handoff trigger: %s", new.attributes.get("media_content_id"))
             self._schedule(self._handoff(), "handoff")
@@ -256,6 +279,85 @@ class SyncController:
         if old.attributes.get("media_content_type") != "music":
             return False
         return any(self._state(e) == "playing" for e in self.arylic_entities)
+
+    # ---------- volume redirect (Alice command -> outputs) ----------
+
+    def _is_volume_redirect(self, old: State | None, new: State) -> bool:
+        """True when the user changed Alice's volume while music is handed off
+        (Alice muted, outputs playing). Then "louder/quieter" spoken to Alice
+        should move the OUTPUTS, not the silent Station."""
+        if not bool(self._opt(OPT_REDIRECT_VOLUME)):
+            return False
+        if old is None or new.state != "playing":
+            return False
+        # Only in handoff-to-silence setups; in true multi-room (Alice stays
+        # audible) a volume change on Alice is genuinely meant for Alice.
+        if float(self._opt(OPT_ALICE_END_VOLUME)) > 0.15:
+            return False
+        if new.attributes.get("media_content_type") != "music":
+            return False
+        # A handoff/stop in progress owns Alice's volume — don't interfere.
+        if self._task is not None and not self._task.done():
+            return False
+        # Anti-loop: if a player re-asserts its level right after we snap Alice
+        # back, don't ping-pong. Distinct voice commands are >1s apart anyway.
+        if time.monotonic() - self._last_redirect < 0.8:
+            return False
+        if not any(self._state(e) == "playing" for e in self.arylic_entities):
+            return False
+        old_vol_raw = old.attributes.get("volume_level")
+        new_vol_raw = new.attributes.get("volume_level")
+        if old_vol_raw is None or new_vol_raw is None:
+            return False
+        old_vol = _safe_float(old_vol_raw, 0.0)
+        new_vol = _safe_float(new_vol_raw, 0.0)
+        if abs(new_vol - old_vol) < 0.005:
+            return False
+        # Ignore the echo of a volume WE just wrote to Alice.
+        if (
+            self._alice_volume_we_set is not None
+            and abs(new_vol - self._alice_volume_we_set) < 0.01
+        ):
+            return False
+        return True
+
+    def _schedule_volume(self, old: State, new: State) -> None:
+        if self._vol_task is not None and not self._vol_task.done():
+            self._vol_task.cancel()
+        self._vol_task = self.entry.async_create_background_task(
+            self.hass, self._redirect_volume(old, new), name="alice_arylic_sync volume"
+        )
+
+    async def _redirect_volume(self, old: State, new: State) -> None:
+        """Apply Alice's volume delta to every output, then snap Alice back to
+        its muted handoff level so the Station stays silent."""
+        self._last_redirect = time.monotonic()
+        try:
+            end_volume = float(self._opt(OPT_ALICE_END_VOLUME))
+            old_vol = _safe_float(old.attributes.get("volume_level"), 0.0)
+            new_vol = _safe_float(new.attributes.get("volume_level"), 0.0)
+            delta = new_vol - old_vol
+            await asyncio.gather(
+                *(
+                    self._set_volume(
+                        entity_id,
+                        _safe_float(self._attr(entity_id, "volume_level"), 0.0) + delta,
+                    )
+                    for entity_id in self.arylic_entities
+                )
+            )
+            await self._set_volume(self.alice_entity, end_volume)
+            _LOGGER.debug(
+                "Redirected Alice volume %.3f->%.3f (delta %.3f) to outputs %s",
+                old_vol,
+                new_vol,
+                delta,
+                self.arylic_entities,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Volume redirect failed")
 
     # ---------- handoff (start) ----------
 
