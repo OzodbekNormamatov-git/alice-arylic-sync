@@ -46,6 +46,7 @@ from .const import (
     OPT_REGROUP_EACH_TRACK,
     OPT_SEEK_EACH_OUTPUT,
     OPT_STEPS,
+    OPT_STOP_CONFIRM_DELAY,
     OPT_STOP_FADE_FLOOR,
     OPT_STOP_STEP_DELAY_MS,
     OPT_STOP_STEPS,
@@ -87,6 +88,15 @@ class SyncController:
         # from a user's spoken "louder/quieter".
         self._alice_volume_we_set: float | None = None
         self._last_redirect: float = 0.0
+        # The track we last handed off to the outputs. A voice command to the
+        # Station drops it out of 'playing' and back (often re-reporting the same
+        # track); without this we'd treat that as a fresh start and reset the
+        # outputs to floor on every spoken command.
+        self._handoff_content_id: str | None = None
+        # True only while a smooth_stop sits in its confirm-delay debounce: the
+        # stop has not touched any volume yet, so it must NOT block a "louder"
+        # redirect spoken during that window.
+        self._stop_pending: bool = False
 
     # ---------- lifecycle ----------
 
@@ -120,7 +130,13 @@ class SyncController:
 
     @callback
     def async_cancel(self) -> None:
-        """Abort the run in progress (used when the Sync switch turns off)."""
+        """Abort the run in progress (used when the Sync switch turns off).
+
+        Deliberately does NOT forget the handed-off track: the outputs keep
+        playing while disabled, so on re-enable the same track is still
+        recognised as handed off. Clearing it here would leave it None while the
+        outputs play on, and the next voice-command blip would then re-run the
+        whole handoff."""
         self._cancel_running()
 
     def _schedule(self, coro: Any, name: str) -> None:
@@ -239,6 +255,26 @@ class SyncController:
         if new is None or new.state in ("unknown", "unavailable"):
             return
 
+        # Log meaningful transitions only — a playing media_player refreshes
+        # media_position roughly once a second, and logging those would bury the
+        # state/content/volume changes that actually matter for diagnosis.
+        if old is None or (
+            old.state != new.state
+            or old.attributes.get("media_content_id")
+            != new.attributes.get("media_content_id")
+            or old.attributes.get("volume_level") != new.attributes.get("volume_level")
+        ):
+            _LOGGER.debug(
+                "alice change: state %s->%s vol %s->%s content %s->%s (handed off: %s)",
+                old.state if old else None,
+                new.state,
+                old.attributes.get("volume_level") if old else None,
+                new.attributes.get("volume_level"),
+                old.attributes.get("media_content_id") if old else None,
+                new.attributes.get("media_content_id"),
+                self._handoff_content_id,
+            )
+
         if self._is_volume_redirect(old, new):
             _LOGGER.debug(
                 "Volume redirect: alice %s -> %s",
@@ -256,13 +292,27 @@ class SyncController:
             self._schedule(self._smooth_stop(), "smooth_stop")
 
     def _is_handoff_trigger(self, old: State | None, new: State) -> bool:
-        """Music started or the track changed on Alice."""
+        """Music started or the track changed on Alice.
+
+        Crucially NOT a fresh start: a voice command to the Station ("louder",
+        "what's the weather") makes it blip out of 'playing' and back, usually
+        re-reporting the SAME track. Re-running the handoff then would slam the
+        outputs back to the floor volume and crossfade them up again on every
+        spoken word (the reported "outputs drop to 6 then climb to 16, never
+        higher" symptom, and Alice briefly audible during the crossfade). So if
+        we have already handed off this exact track and the outputs are still
+        playing it, treat the (re)entry as a resume, not a new track."""
         if new.state != "playing":
             return False
         if new.attributes.get("media_content_type") != "music":
             return False
         content_id = new.attributes.get("media_content_id")
         if content_id in INVALID_CONTENT_IDS:
+            return False
+        outputs_playing = any(
+            self._state(e) == "playing" for e in self.arylic_entities
+        )
+        if content_id == self._handoff_content_id and outputs_playing:
             return False
         if old is None or old.state != "playing":
             return True
@@ -280,6 +330,19 @@ class SyncController:
             return False
         return any(self._state(e) == "playing" for e in self.arylic_entities)
 
+    def _music_resumed(self) -> bool:
+        """True when Alice is playing music again while an output is still
+        playing — used to tell a transient voice-command blip from a real stop,
+        both in the stop debounce and partway through the stop fade."""
+        alice = self.hass.states.get(self.alice_entity)
+        return (
+            alice is not None
+            and alice.state == "playing"
+            and alice.attributes.get("media_content_type") == "music"
+            and alice.attributes.get("media_content_id") not in INVALID_CONTENT_IDS
+            and any(self._state(e) == "playing" for e in self.arylic_entities)
+        )
+
     # ---------- volume redirect (Alice command -> outputs) ----------
 
     def _is_volume_redirect(self, old: State | None, new: State) -> bool:
@@ -296,8 +359,15 @@ class SyncController:
             return False
         if new.attributes.get("media_content_type") != "music":
             return False
-        # A handoff/stop in progress owns Alice's volume — don't interfere.
-        if self._task is not None and not self._task.done():
+        # A handoff or a CONFIRMED stop in progress owns Alice's volume — don't
+        # interfere. But a stop still in its confirm-delay debounce
+        # (_stop_pending) has not touched anything yet, so a "louder" spoken in
+        # that window must still reach the outputs.
+        if (
+            self._task is not None
+            and not self._task.done()
+            and not self._stop_pending
+        ):
             return False
         # Anti-loop: if a player re-asserts its level right after we snap Alice
         # back, don't ping-pong. Distinct voice commands are >1s apart anyway.
@@ -380,6 +450,13 @@ class SyncController:
         content_id = alice.attributes.get("media_content_id")
         if content_id in INVALID_CONTENT_IDS:
             return
+        # Remember the track we're committing to hand off BEFORE the (blocking,
+        # possibly multi-second) play_media, so a voice-command blip landing
+        # mid-handoff is recognised as a resume of THIS track, not a re-trigger
+        # of the whole handoff. The _is_handoff_trigger guard also requires
+        # outputs_playing, so a handoff that never starts the outputs cannot
+        # wrongly suppress a later real start.
+        self._handoff_content_id = content_id
 
         floor = float(self._opt(OPT_ARYLIC_FLOOR))
         target = float(self._opt(OPT_ARYLIC_TARGET))
@@ -523,9 +600,45 @@ class SyncController:
 
     # ---------- smooth stop ----------
 
+    async def _restore_outputs(self, start_volumes: dict[str, float]) -> None:
+        """Put every output back to the volume it had before the stop fade —
+        used when music resumes mid-stop so we abort without silencing it."""
+        await asyncio.gather(
+            *(
+                self._set_volume(entity_id, start)
+                for entity_id, start in start_volumes.items()
+            )
+        )
+
     async def _smooth_stop(self) -> None:
         if not self.enabled:
             return
+        # Debounce: a voice command to the Station ("louder", "what's the
+        # weather") briefly drops music out of 'playing' and back. Without this,
+        # that blip looks like a real stop — we would fade the outputs down and
+        # pause them, then the resume would re-run the full handoff (outputs slam
+        # to floor and crossfade up, Alice briefly audible) on every spoken word.
+        # So wait, then re-check: if music is back and the outputs are still
+        # playing, it was a transient blip — leave the handoff untouched.
+        confirm_delay = float(self._opt(OPT_STOP_CONFIRM_DELAY))
+        if confirm_delay > 0:
+            # _stop_pending lets a "louder" redirect through during this window
+            # (the stop owns nothing yet). Cleared in finally so a cancel mid-
+            # sleep (a new trigger / switch off) cannot strand it True.
+            self._stop_pending = True
+            try:
+                await asyncio.sleep(confirm_delay)
+            finally:
+                self._stop_pending = False
+            if not self.enabled:
+                return
+            if self._music_resumed():
+                _LOGGER.debug(
+                    "Stop ignored: music resumed within the confirm delay "
+                    "(transient voice-command blip) — handoff kept"
+                )
+                return
+
         fade_floor = float(self._opt(OPT_STOP_FADE_FLOOR))
         steps = max(1, int(self._opt(OPT_STOP_STEPS)))
         step_delay = int(self._opt(OPT_STOP_STEP_DELAY_MS)) / 1000
@@ -540,6 +653,17 @@ class SyncController:
             # 1) Fade all outputs down to the floor together (per-entity curve,
             #    concurrent within each step so the rooms stay in lockstep).
             for i in range(1, steps + 1):
+                # A late blip, or the user replaying the same track, can resume
+                # music partway through the fade. Abort: restore the outputs to
+                # where they were and keep the handoff, rather than pausing them
+                # into silence while Alice plays on.
+                if self._music_resumed():
+                    await self._restore_outputs(start_volumes)
+                    _LOGGER.debug(
+                        "Stop aborted mid-fade: music resumed — outputs restored, "
+                        "handoff kept"
+                    )
+                    return
                 await asyncio.gather(
                     *(
                         self._set_volume(
@@ -550,6 +674,16 @@ class SyncController:
                     )
                 )
                 await asyncio.sleep(step_delay)
+
+            # Final guard: music can resume in the gap between the last fade step
+            # and the pause — abort the same way rather than silencing it.
+            if self._music_resumed():
+                await self._restore_outputs(start_volumes)
+                _LOGGER.debug(
+                    "Stop aborted before pause: music resumed — outputs restored, "
+                    "handoff kept"
+                )
+                return
 
             # 2) Pause: the leader's pause covers the whole MA group; outputs
             #    that never joined the group get their own pause. One failing
@@ -573,6 +707,13 @@ class SyncController:
             raise
         except Exception:
             _LOGGER.exception("Stop fade failed — restoring Alice volume anyway")
+
+        # The stop is confirmed real and the outputs are now paused, so a later
+        # play (even of the same track) must re-handoff: forget the handed-off
+        # track. Cleared here (after the pause) rather than at the top so a
+        # same-track resume mid-fade does not strand this as None while the
+        # outputs are still playing.
+        self._handoff_content_id = None
 
         # 3) Restore Alice's volume (always reached unless cancelled).
         await self._set_volume(self.alice_entity, float(self._opt(OPT_ALICE_RESTORE_VOLUME)))

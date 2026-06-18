@@ -30,6 +30,7 @@ from .const import (
     OPT_REGROUP_EACH_TRACK,
     OPT_SEEK_EACH_OUTPUT,
     OPT_STEPS,
+    OPT_STOP_CONFIRM_DELAY,
     OPT_STOP_FADE_FLOOR,
     OPT_STOP_STEP_DELAY_MS,
     OPT_STOP_STEPS,
@@ -159,6 +160,9 @@ class AliceArylicSyncOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     OPT_STOP_STEP_DELAY_MS, default=current[OPT_STOP_STEP_DELAY_MS]
                 ): _number(0, 1000, 10, "ms"),
+                vol.Required(
+                    OPT_STOP_CONFIRM_DELAY, default=current[OPT_STOP_CONFIRM_DELAY]
+                ): _number(0, 10, 0.1, "s"),
                 vol.Required(
                     OPT_PLAY_WAIT_TIMEOUT, default=current[OPT_PLAY_WAIT_TIMEOUT]
                 ): _number(1, 60, 1, "s"),

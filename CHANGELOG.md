@@ -3,6 +3,44 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.4.1] - 2026-06-18
+
+### Tuzatildi
+- **"Balandlat/pasaytir" deganda kolonkalar floorga tushib qaytadigan muammo
+  (ovoz oshmasdi, Alice baland eshitilardi).** Handoffdan keyin Alice'ga ovoz
+  buyrug'i berilganda stansiya bir lahzaga `playing` holatidan chiqib-qaytar (yoki
+  o'sha trekni qayta e'lon qilar). Bu **yangi trek boshlandi** yoki **musiqa
+  to'xtadi** deb hisoblanib, butun handoff yoki stop-fade qaytadan ishga tushardi:
+  kolonkalar floor (masalan 6%) ga tushib yana target (16%) ga ko'tarilardi,
+  ovoz aslida o'smasdi, Alice esa crossfade paytida baland eshitilardi. Ikki yo'l
+  ham tuzatildi:
+  - **Handoff trigger:** topshirilgan trek o'zgarmagan va kolonkalar hali
+    chalayotgan bo'lsa, bunday qayta-kirish **resume** deb qabul qilinadi —
+    handoff qaytadan ishga tushmaydi.
+  - **Stop trigger (debounce):** musiqa to'xtaganda endi qisqa vaqt
+    (**«To'xtashni tasdiqlash kechikishi»**, standart 1.0s) kutib qaytadan
+    tekshiriladi. Agar shu oraliqda musiqa qaytsa (ovozli buyruq sababli yuz
+    bergan lahzalik to'xtash), stop **bekor qilinadi** — kolonkalar to'xtamaydi.
+  - Natijada ovoz buyrug'i to'g'ri kolonkalarga qo'llanadi va orta boradi
+    (6→16→26…), Alice jim qoladi.
+
+### Qo'shildi
+- Yangi sozlama: **«To'xtashni tasdiqlash kechikishi»** (`stop_confirm_delay`,
+  standart 1.0s). Ovozli buyruqlaringiz uzunroq bo'lsa (masalan "ob-havo qanaqa")
+  oshiring; 0 qilsangiz, eski (darhol to'xtash) xatti-harakatga qaytadi.
+
+### O'zgartirildi
+- Sync switch o'chirib-yoqilganda (kolonkalar chalishda davom etayotgan bo'lsa)
+  topshirilgan trek xotirasi **saqlanadi** — qayta yoqqaningizdan keyingi ovozli
+  buyruq behuda to'liq handoffni qo'zg'atmaydi.
+- Diagnostika: har bir muhim Alice o'zgarishi (state/volume/content + topshirilgan
+  trek) DEBUG logga yoziladi (pozitsiya-yangilanish "shovqini"siz).
+
+### Ma'lum cheklov
+- **Ovozli "pasaytir"** faqat **«Alice yakuniy ovozi» > 0** bo'lganda ishlaydi
+  (masalan 0.05). Standart 0 da Alice 0 dan pastga tusholmaydi, shuning uchun
+  "pasaytir" sezilmaydi; "balandlat" esa har doim ishlaydi.
+
 ## [1.4.0] - 2026-06-18
 
 ### Qo'shildi
