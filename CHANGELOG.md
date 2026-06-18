@@ -3,6 +3,30 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.3.0] - 2026-06-18
+
+### Tuzatildi
+- **Multi-room drift:** bir nechta Arylic kolonka **trek almashganda yoki
+  stop→qayta qo'yilganda bir-biridan ajralib (kech qolib)** ketadigan muammo
+  tuzatildi. Sabablar: (1) to'xtashdan keyin guruh "eskirgan" deb belgilanib,
+  qayta birlashtirilmas edi; (2) faqat **yetakchi** 'playing' bo'lishi kutilib,
+  hali buferlanayotgan boshqa kolonkalar seekka ergashmасdi; (3) seek faqat
+  yetakchiga yuborilardi.
+
+### O'zgartirildi
+- Endi handoff **sovuq startda** (yetakchi avval chalmayotgan bo'lsa: birinchi
+  ijro yoki to'xtashdan keyin) guruhni **majburiy qayta tuzadi**, ammo ijro
+  davom etayotganda trek almashsa — uzilishsiz o'tkazib yuboradi.
+- Seekdan oldin **barcha** chiqishlar 'playing' bo'lishini kutadi (faqat yetakchi emas).
+- Sinxrondan keyin xonalar pozitsiyasi tekshiriladi: 2.5s dan ko'p farq bo'lsa,
+  **ogohlantirish** (DEBUG'da har xonaning pozitsiyasi) chiqaradi.
+
+### Qo'shildi
+- **Har bir chiqishni alohida seek qilish** sozlamasi — kolonkalar
+  namuna-aniq sinxron qilolmaydigan holatlar uchun (seekni hammaga yuboradi).
+- **Har trekda qayta guruhlash** sozlamasi — guruh vaqt o'tib buzilsa, har
+  trekda majburiy qayta birlashtirish.
+
 ## [1.2.0] - 2026-06-11
 
 ### Qo'shildi

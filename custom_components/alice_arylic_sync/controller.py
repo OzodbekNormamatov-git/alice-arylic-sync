@@ -42,6 +42,8 @@ from .const import (
     OPT_HEADSTART_MS,
     OPT_MEDIA_TYPE,
     OPT_PLAY_WAIT_TIMEOUT,
+    OPT_REGROUP_EACH_TRACK,
+    OPT_SEEK_EACH_OUTPUT,
     OPT_STEPS,
     OPT_STOP_FADE_FLOOR,
     OPT_STOP_STEP_DELAY_MS,
@@ -163,7 +165,7 @@ class SyncController:
             blocking=True,
         )
 
-    async def _ensure_group(self) -> None:
+    async def _ensure_group(self, force: bool = False) -> None:
         """Join all outputs into one Music Assistant group (leader first).
 
         Skipped when there is a single output or every member is already in
@@ -175,7 +177,7 @@ class SyncController:
         if not members:
             return
         current = set(self._attr(self.leader, "group_members") or [])
-        if set(members) <= current:
+        if set(members) <= current and not force:
             return
         try:
             await self.hass.services.async_call(
@@ -285,8 +287,17 @@ class SyncController:
         gap = int(self._opt(OPT_ALICE_GAP_MS)) / 1000
         alice_start_volume = _safe_float(alice.attributes.get("volume_level"), 0.5)
 
-        # 0) Multi-room: make sure all outputs are in one synced group.
-        await self._ensure_group()
+        # 0) Multi-room: make sure all outputs are in one synced group. Force a
+        #    re-join on a cold start (leader not already playing: first play, or
+        #    after a stop/pause) and when the user opted to regroup every track.
+        #    Music Assistant can quietly loosen a group across a stop while
+        #    'group_members' still lists every speaker — that stale state is what
+        #    let rooms drift apart on the second track / after replay, because
+        #    the old code skipped the re-join.
+        leader_cold = self._state(self.leader) != "playing"
+        await self._ensure_group(
+            force=leader_cold or bool(self._opt(OPT_REGROUP_EACH_TRACK))
+        )
 
         # 1) All outputs to floor volume, start the same track via Music
         #    Assistant on the leader (the group follows it).
@@ -302,14 +313,25 @@ class SyncController:
             blocking=True,
         )
 
-        # 2) Wait until the leader reports playing.
-        await self._wait_for(
-            lambda: self._state(self.leader) == "playing",
+        # 2) Wait until EVERY output reports playing — not just the leader. A
+        #    seek issued while members are still buffering the new track does not
+        #    bring them along, so they lag the leader by seconds (the reported
+        #    "rooms drift" symptom). Bounded by the play-wait timeout; any output
+        #    that never starts is logged and left behind rather than blocking.
+        if not await self._wait_for(
+            lambda: all(self._state(e) == "playing" for e in self.arylic_entities),
             float(self._opt(OPT_PLAY_WAIT_TIMEOUT)),
-        )
+        ):
+            stragglers = [e for e in self.arylic_entities if self._state(e) != "playing"]
+            _LOGGER.debug("Outputs not playing before seek (continuing): %s", stragglers)
 
-        # 3) Seek the leader to Alice's current second (+ offset, clamped >= 0);
-        #    grouped members follow the leader's position.
+        # 3) Seek to Alice's current second (+ offset, clamped >= 0). By default
+        #    only the leader is seeked and a real Music Assistant sync group
+        #    follows it. With "seek every output" enabled, all outputs are seeked
+        #    in one call — for speakers Music Assistant cannot sample-sync, where
+        #    the leader's seek would otherwise not propagate to the others.
+        seek_each = bool(self._opt(OPT_SEEK_EACH_OUTPUT))
+        seek_targets: str | list[str] = self.arylic_entities if seek_each else self.leader
         pos_updated_before = self._attr(self.leader, "media_position_updated_at")
         seek_target = self._compute_seek_target()
         try:
@@ -317,11 +339,11 @@ class SyncController:
                 "media_player",
                 "media_seek",
                 {"seek_position": seek_target},
-                target={"entity_id": self.leader},
+                target={"entity_id": seek_targets},
                 blocking=True,
             )
         except Exception:  # noqa: BLE001 - some players reject seek; carry on unsynced
-            _LOGGER.debug("media_seek failed on %s, continuing", self.leader)
+            _LOGGER.debug("media_seek failed on %s, continuing", seek_targets)
 
         # 4) Wait until the leader pushes a post-seek position update (it
         #    accepted the new position). Some integrations skip updates for
@@ -339,6 +361,11 @@ class SyncController:
         )
         await asyncio.sleep(0.4)
 
+        # 4b) Drift guard + diagnostics: if a room is still seconds away from the
+        #     leader, the players are not staying sample-synced. Surface it with
+        #     an actionable hint; positions are logged at DEBUG for tuning.
+        self._warn_on_drift()
+
         # 5) Stepped crossfade, outputs leading: each step every output goes up
         #    together (one service call), head-start pause, then Alice down.
         for i in range(1, steps + 1):
@@ -348,6 +375,40 @@ class SyncController:
             alice_vol = max(end_volume, alice_start_volume - (alice_start_volume - end_volume) / steps * i)
             await self._set_volume(self.alice_entity, alice_vol)
             await asyncio.sleep(gap)
+
+    def _warn_on_drift(self) -> None:
+        """Log post-sync positions; warn if any room is >2.5s off the leader."""
+        members = self.arylic_entities[1:]
+        if not members:
+            return
+        positions = {
+            entity_id: _safe_float(self._attr(entity_id, "media_position"), 0.0)
+            for entity_id in self.arylic_entities
+        }
+        _LOGGER.debug(
+            "post-sync leader=%s group_members=%s positions=%s",
+            self.leader,
+            self._attr(self.leader, "group_members"),
+            positions,
+        )
+        leader_pos = positions[self.leader]
+        drifted = [
+            entity_id
+            for entity_id in members
+            if self._state(entity_id) == "playing"
+            and abs(positions[entity_id] - leader_pos) > 2.5
+        ]
+        if drifted:
+            _LOGGER.warning(
+                "Output(s) %s are >2.5s out of sync with the leader %s. These "
+                "players likely cannot be sample-accurately synced by Music "
+                "Assistant. Fixes: (1) enable 'Seek every output' in the "
+                "integration's Configure dialog, or (2) create ONE Music "
+                "Assistant Sync group from these speakers and select that single "
+                "group as the output.",
+                drifted,
+                self.leader,
+            )
 
     def _compute_seek_target(self) -> int:
         pos = float(self._attr(self.alice_entity, "media_position") or 0)

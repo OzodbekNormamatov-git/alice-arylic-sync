@@ -44,7 +44,9 @@
           "play_wait_timeout": "Timeout: Arylic ijrosini kutish (s)",
           "buffer_wait_timeout": "Timeout: seekdan keyin kutish (s)",
           "track_uri_prefix": "Trek URI prefiksi",
-          "media_type": "Media turi"
+          "media_type": "Media turi",
+          "regroup_each_track": "Har trekda qayta guruhlash",
+          "seek_each_output": "Har bir chiqishni alohida seek qilish"
         },
         "data_description": {
           "sync_offset": "Arylic Alice bilan bir xil sekunddan chiqishi uchun tuzatish. Arylic orqada bo'lsa — oshiring; oldinda bo'lsa — kamaytiring.",
@@ -62,7 +64,9 @@
           "play_wait_timeout": "Davom etishdan oldin Arylic 'playing' holatiga o'tishini shuncha kutamiz.",
           "buffer_wait_timeout": "Seekdan keyin player yangi pozitsiyani qabul qilishini shuncha kutamiz.",
           "track_uri_prefix": "Alice'ning media_content_id qiymati oldiga qo'shiladi. Yandex Music uchun 'yandex_music://track/'; boshqa Music Assistant provayderi uchun o'zgartiring.",
-          "media_type": "music_assistant.play_media uchun media turi (odatda 'track')."
+          "media_type": "music_assistant.play_media uchun media turi (odatda 'track').",
+          "regroup_each_track": "Har trek boshlanganda kolonkalarni qaytadan guruhlaydi. Xonalar vaqt o'tib bir-biridan ajralib ketsa yoqing (har trekda biroz uzilish bo'lishi mumkin).",
+          "seek_each_output": "Seekni faqat yetakchiga emas, har bir kolonkaga alohida yuboradi. Kolonkalaringizni Music Assistant namuna-aniqligida sinxron qila olmasa yoqing."
         }
       }
     }

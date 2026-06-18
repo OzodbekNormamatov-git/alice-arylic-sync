@@ -26,6 +26,8 @@ from .const import (
     OPT_HEADSTART_MS,
     OPT_MEDIA_TYPE,
     OPT_PLAY_WAIT_TIMEOUT,
+    OPT_REGROUP_EACH_TRACK,
+    OPT_SEEK_EACH_OUTPUT,
     OPT_STEPS,
     OPT_STOP_FADE_FLOOR,
     OPT_STOP_STEP_DELAY_MS,
@@ -162,6 +164,14 @@ class AliceArylicSyncOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     OPT_BUFFER_WAIT_TIMEOUT, default=current[OPT_BUFFER_WAIT_TIMEOUT]
                 ): _number(0, 30, 1, "s"),
+                vol.Required(
+                    OPT_REGROUP_EACH_TRACK,
+                    default=current[OPT_REGROUP_EACH_TRACK],
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    OPT_SEEK_EACH_OUTPUT,
+                    default=current[OPT_SEEK_EACH_OUTPUT],
+                ): selector.BooleanSelector(),
                 vol.Required(
                     OPT_TRACK_URI_PREFIX, default=current[OPT_TRACK_URI_PREFIX]
                 ): selector.TextSelector(),

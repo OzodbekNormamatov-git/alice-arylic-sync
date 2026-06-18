@@ -23,8 +23,11 @@ OPT_STOP_FADE_FLOOR = "stop_fade_floor"
 OPT_ALICE_RESTORE_VOLUME = "alice_restore_volume"
 OPT_STOP_STEPS = "stop_steps"
 OPT_STOP_STEP_DELAY_MS = "stop_step_delay_ms"
+# Multi-room robustness levers (v1.3.0).
+OPT_REGROUP_EACH_TRACK = "regroup_each_track"  # force re-join on every handoff
+OPT_SEEK_EACH_OUTPUT = "seek_each_output"  # seek every output, not just the leader
 
-DEFAULTS: dict[str, float | int | str] = {
+DEFAULTS: dict[str, float | int | str | bool] = {
     OPT_SYNC_OFFSET: 5.0,
     OPT_HANDOFF_DELAY: 0.0,
     OPT_STEPS: 12,
@@ -41,6 +44,8 @@ DEFAULTS: dict[str, float | int | str] = {
     OPT_ALICE_RESTORE_VOLUME: 0.5,
     OPT_STOP_STEPS: 10,
     OPT_STOP_STEP_DELAY_MS: 200,
+    OPT_REGROUP_EACH_TRACK: False,
+    OPT_SEEK_EACH_OUTPUT: False,
 }
 
 INVALID_CONTENT_IDS = (None, "", "unknown", "unavailable")
