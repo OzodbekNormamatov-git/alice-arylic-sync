@@ -29,6 +29,7 @@ from .const import (
     OPT_REDIRECT_VOLUME,
     OPT_REGROUP_EACH_TRACK,
     OPT_SEEK_EACH_OUTPUT,
+    OPT_SKIP_SEEK,
     OPT_STEPS,
     OPT_STOP_CONFIRM_DELAY,
     OPT_STOP_FADE_FLOOR,
@@ -176,6 +177,10 @@ class AliceArylicSyncOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     OPT_SEEK_EACH_OUTPUT,
                     default=current[OPT_SEEK_EACH_OUTPUT],
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    OPT_SKIP_SEEK,
+                    default=current[OPT_SKIP_SEEK],
                 ): selector.BooleanSelector(),
                 vol.Required(
                     OPT_REDIRECT_VOLUME,

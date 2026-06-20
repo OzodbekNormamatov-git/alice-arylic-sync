@@ -3,6 +3,45 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.5.0] - 2026-06-20
+
+Multi-room ishonchliligini mustahkamlash (arxitektura o'zgartirilmadi —
+mavjud "har Arylic'ni guruhlash" yo'li tuzatildi va bardoshliroq qilindi).
+
+### Tuzatildi
+- **To'xtagandan keyin bir xona musiqa chalishda davom etardigan bug.** Avval
+  pauza uchun faqat yetakchining `group_members`'iga tayanilardi; agar guruh
+  "bo'shashib", lekin ro'yxat hali hammани ko'rsatib tursa, haqiqatda guruhdan
+  chiqib ketgan xona pauza qilinmasdan qolardi. Endi **har bir kolonka alohida**
+  pauza qilinadi (guruhdagilarga zararsiz, idempotent).
+- **Bitta o'lik/yo'q kolonka butun crossfade'ni to'xtatib qo'yardi.** Volume
+  endi har bir kolonkaga alohida, xatoga chidamli (`return_exceptions`) yuboriladi
+  va har qadamda faqat **mavjud** kolonkalarga qo'llanadi — bitta xona tushib
+  qolsa, qolganlari to'xtamaydi va Alice to'liq pasayadi. Ovoz yo'naltirishda
+  (`redirect_volume`) ham shu — bitta kolonka xato bersa, Alice baribir jim
+  holatga qaytariladi.
+- **Seekdan oldin a'zolar hali eski trekda bo'lsa drift bo'lardi.** Endi seekdan
+  oldin har bir kolonka faqat `playing` emas, **yangi trekka o'tgani**
+  (content_id o'zgargani yoki pozitsiya 0 ga tushgani) kutiladi.
+
+### Qo'shildi
+- **Leader failover:** yetakchi sifatida endi har safar **birinchi mavjud**
+  kolonka olinadi (avval doim `arylic_entities[0]` edi — agar o'sha offline
+  bo'lsa, butun tizim ishlamasdi). Hech qaysi kolonka mavjud bo'lmasa, handoff
+  toza o'tkazib yuboriladi.
+- **Guruhlash imkoniyatini oldindan tekshirish:** `media_player.join` chaqirishdan
+  oldin kolonkaning `GROUPING` bayrog'i (supported_features) tekshiriladi —
+  qo'llab-quvvatlamaydigan yoki mavjud bo'lmagan kolonka aniq ogohlantirish bilan
+  guruhdan chiqariladi (avvalgi "join, keyin xato" o'rniga).
+- Yangi sozlama: **«Seekni o'tkazib yuborish»** (`skip_seek`, standart o'chiq).
+  Ba'zi Arylic/LinkPlay firmware'larida MA orqali seek stream'ni uzadi (progress
+  0:00 ga qaytadi, MA restart kerak — HA core #136905). Shu kolonkalar uchun
+  yoqing: trek 0:00 dan boshlanadi, sinxron faqat «Sinxron offset» bilan
+  taxminiy, lekin stream uzilmaydi.
+- **Integratsiya o'chirilganda guruh tarqatiladi** (`unjoin`). Reload va Sync
+  switch'ni o'chirish guruhni ataylab saqlaydi (kolonkalar chalishda davom etadi)
+  — faqat to'liq o'chirishda guruh tarqatiladi, orfan guruhlar qolmaydi.
+
 ## [1.4.1] - 2026-06-18
 
 ### Tuzatildi

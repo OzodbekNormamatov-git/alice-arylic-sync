@@ -48,6 +48,7 @@
           "media_type": "Media turi",
           "regroup_each_track": "Har trekda qayta guruhlash",
           "seek_each_output": "Har bir chiqishni alohida seek qilish",
+          "skip_seek": "Seekni o'tkazib yuborish (Arylic seek bug'i)",
           "redirect_volume": "Alice ovoz buyrug'ini kolonkalarga yo'naltirish"
         },
         "data_description": {
@@ -70,6 +71,7 @@
           "media_type": "music_assistant.play_media uchun media turi (odatda 'track').",
           "regroup_each_track": "Har trek boshlanganda kolonkalarni qaytadan guruhlaydi. Xonalar vaqt o'tib bir-biridan ajralib ketsa yoqing (har trekda biroz uzilish bo'lishi mumkin).",
           "seek_each_output": "Seekni faqat yetakchiga emas, har bir kolonkaga alohida yuboradi. Kolonkalaringizni Music Assistant namuna-aniqligida sinxron qila olmasa yoqing.",
+          "skip_seek": "Ba'zi Arylic/LinkPlay firmware'larida Music Assistant orqali seek qilinganda stream uziladi (progress 0:00 ga qaytadi, MA'ni restart qilish kerak — HA core #136905). Shu holatda yoqing: kolonkalar trekni 0:00 dan boshlaydi, sinxron faqat «Sinxron offset» bilan taxminiy bo'ladi, lekin stream uzilmaydi.",
           "redirect_volume": "Handoff bo'lgach (Alice jim, kolonkalar chalayotganda) Alice'ga 'ovozni balandlat/pasaytir' desangiz, o'zgarish Alice'ga emas, KOLONKALARGA qo'llanadi; Alice jim qoladi. Faqat 'Alice yakuniy ovozi' past (≤0.15) bo'lganda ishlaydi. ESLATMA: 'pasaytir' ishlashi uchun 'Alice yakuniy ovozi' 0 dan katta bo'lishi kerak (masalan 0.05) — aks holda Alice 0 dan pastga tusholmaydi va 'pasaytir' sezilmaydi."
         }
       }

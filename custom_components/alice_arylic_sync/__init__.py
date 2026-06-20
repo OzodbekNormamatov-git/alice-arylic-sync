@@ -104,3 +104,31 @@ async def async_unload_entry(hass: HomeAssistant, entry: AliceArylicConfigEntry)
     if unload_ok:
         await entry.runtime_data.async_shutdown()
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Dissolve the Music Assistant group when the integration is REMOVED.
+
+    Reload (every option change) and disabling the Sync switch deliberately keep
+    the outputs grouped and playing — only a true removal tears the group down,
+    so we don't leave an orphaned group ganging the speakers together after the
+    integration is deleted. async_remove_entry only fires on real removal (not on
+    reload), so this is the safe place for it."""
+    outputs = list(entry.data.get(CONF_ARYLIC_ENTITIES, []))
+    if len(outputs) < 2:
+        return  # single output (or none) was never grouped
+    try:
+        await hass.services.async_call(
+            "media_player",
+            "unjoin",
+            {},
+            target={"entity_id": outputs},
+            blocking=True,
+        )
+        _LOGGER.info("Dissolved the Arylic group for removed entry '%s'", entry.title)
+    except Exception:  # noqa: BLE001
+        _LOGGER.warning(
+            "Could not dissolve the Arylic group on removal of '%s' (the players "
+            "may already be ungrouped)",
+            entry.title,
+        )
